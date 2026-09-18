@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/set-state-in-effect */
 // src\pages\Services\ServiceForm.jsx
 
 import React, { useState, useEffect } from 'react';
@@ -6,6 +5,7 @@ import Input from '../../components/Common/Input';
 import Textarea from '../../components/Common/TextArea';
 import Button from '../../components/Common/Button';
 import { Save, X, Upload, Link as LinkIcon } from 'lucide-react';
+import notify from "../../lib/notify";
 
 const ServiceForm = ({ service, onSubmit, onCancel, isLoading }) => {
   const [formData, setFormData] = useState({
@@ -67,13 +67,13 @@ const ServiceForm = ({ service, onSubmit, onCancel, isLoading }) => {
     if (file) {
       // Validate file type
       if (!file.type.startsWith('image/')) {
-        alert('Please select an image file');
+        notify.error('Please select an image file');
         return;
       }
       
       // Validate file size (max 5MB)
       if (file.size > 5 * 1024 * 1024) {
-        alert('Image size must be less than 5MB');
+        notify.error('Image size must be less than 5MB');
         return;
       }
       

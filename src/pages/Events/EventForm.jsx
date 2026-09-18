@@ -1,4 +1,3 @@
-/* eslint-disable react-hooks/set-state-in-effect */
 // src/pages/Events/EventForm.jsx
 
 import React, { useState, useEffect } from "react";
@@ -7,6 +6,7 @@ import Button from "../../components/Common/Button";
 import RichTextEditor from "../../components/Common/RichTextEditor";
 import eventService from "../../services/eventService";
 import { Save, X, Link as LinkIcon } from "lucide-react";
+import notify from "../../lib/notify";
 
 const EventForm = ({ event, onSubmit, onCancel, isLoading }) => {
   const [formData, setFormData] = useState({
@@ -68,8 +68,8 @@ const EventForm = ({ event, onSubmit, onCancel, isLoading }) => {
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    if (!file.type.startsWith("image/")) { alert("Please select an image file"); return; }
-    if (file.size > 5 * 1024 * 1024) { alert("Image size must be less than 5MB"); return; }
+    if (!file.type.startsWith("image/")) { notify.error("Please select an image file"); return; }
+    if (file.size > 5 * 1024 * 1024) { notify.error("Image size must be less than 5MB"); return; }
     setImageFile(file);
     const reader = new FileReader();
     reader.onloadend = () => setImagePreview(reader.result);

@@ -1,6 +1,6 @@
 // src/pages/Applications/ApplicationList.jsx
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Search,
   Eye,
@@ -11,13 +11,13 @@ import {
   Phone,
   Calendar,
   Briefcase,
-  Download,
 } from "lucide-react";
 import applicationService from "../../services/applicationService";
 import careerService from "../../services/careerService";
 import Modal from "../../components/Common/Modal";
 import Button from "../../components/Common/Button";
 import ApplicationDetail from "./ApplicationDetail";
+import notify from "../../lib/notify";
 
 const ApplicationList = () => {
   const [applications, setApplications] = useState([]);
@@ -33,20 +33,27 @@ const ApplicationList = () => {
   const [selectedApplication, setSelectedApplication] = useState(null);
   const [isUpdating, setIsUpdating] = useState(false);
 
-  // Statistics
-  const [stats, setStats] = useState({
-    total: 0,
-    pending: 0,
-    reviewing: 0,
-    shortlisted: 0,
-    interview: 0,
-    accepted: 0,
-    rejected: 0,
-  });
-
-  useEffect(() => {
-    fetchData();
-  }, []);
+  // Statistik diturunkan dari data, bukan disimpan terpisah, supaya tidak
+  // pernah lagi tidak sinkron dengan daftar setelah update atau delete.
+  // Daftar status harus sama dengan validStatuses di applicationController.
+  const stats = useMemo(() => {
+    const summary = {
+      total: applications.length,
+      pending: 0,
+      reviewing: 0,
+      shortlisted: 0,
+      interview: 0,
+      accepted: 0,
+      rejected: 0,
+    };
+    for (const application of applications) {
+      // "reviewed" adalah nilai lama sebelum pipeline diperluas.
+      const key =
+        application.status === "reviewed" ? "reviewing" : application.status;
+      if (key in summary && key !== "total") summary[key] += 1;
+    }
+    return summary;
+  }, [applications]);
 
   const fetchData = async () => {
     try {
@@ -58,7 +65,6 @@ const ApplicationList = () => {
 
       setApplications(applicationsData);
       setCareers(careersData);
-      calculateStats(applicationsData);
       setError(null);
     } catch (err) {
       setError("Failed to load applications");
@@ -68,18 +74,9 @@ const ApplicationList = () => {
     }
   };
 
-  const calculateStats = (data) => {
-    const newStats = {
-      total: data.length,
-      pending: data.filter((a) => a.status === "pending").length,
-      reviewing: data.filter((a) => a.status === "reviewing").length,
-      shortlisted: data.filter((a) => a.status === "shortlisted").length,
-      interview: data.filter((a) => a.status === "interview").length,
-      accepted: data.filter((a) => a.status === "accepted").length,
-      rejected: data.filter((a) => a.status === "rejected").length,
-    };
-    setStats(newStats);
-  };
+  useEffect(() => {
+    fetchData();
+  }, []);
 
   const handleViewDetails = (application) => {
     setSelectedApplication(application);
@@ -95,10 +92,9 @@ const ApplicationList = () => {
       await applicationService.delete(id);
       const updatedApplications = applications.filter((a) => a.id !== id);
       setApplications(updatedApplications);
-      calculateStats(updatedApplications);
-      alert("Application deleted successfully");
+      notify.success("Application deleted successfully");
     } catch (err) {
-      alert("Failed to delete application");
+      notify.error("Failed to delete application");
       console.error(err);
     }
   };
@@ -111,11 +107,10 @@ const ApplicationList = () => {
         a.id === id ? updated : a
       );
       setApplications(updatedApplications);
-      calculateStats(updatedApplications);
       setIsModalOpen(false);
-      alert("Application status updated successfully");
+      notify.success("Application status updated successfully");
     } catch (err) {
-      alert("Failed to update application status");
+      notify.error("Failed to update application status");
       console.error(err);
     } finally {
       setIsUpdating(false);
@@ -165,9 +160,9 @@ const ApplicationList = () => {
   const filteredApplications = applications
     .filter((app) => {
       const matchesSearch =
-        app.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        app.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        app.phone?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        app.user?.name?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        app.user?.email?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        app.user?.phone?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         app.career?.title?.toLowerCase().includes(searchTerm.toLowerCase());
 
       const matchesStatus =
@@ -178,7 +173,7 @@ const ApplicationList = () => {
 
       return matchesSearch && matchesStatus && matchesCareer;
     })
-    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+    .sort((a, b) => new Date(b.appliedAt) - new Date(a.appliedAt));
 
   if (loading) {
     return (
@@ -333,7 +328,7 @@ const ApplicationList = () => {
                     <td className="px-6 py-4">
                       <div>
                         <div className="font-medium text-slate-900">
-                          {application.name}
+                          {application.user?.name ?? "-"}
                         </div>
                         <div className="text-sm text-slate-500 lg:hidden">
                           {application.career?.title}
@@ -351,12 +346,12 @@ const ApplicationList = () => {
                         <div className="flex items-center gap-2 text-sm text-slate-600">
                           <Mail size={14} />
                           <span className="truncate max-w-[200px]">
-                            {application.email}
+                            {application.user?.email ?? "-"}
                           </span>
                         </div>
                         <div className="flex items-center gap-2 text-sm text-slate-600">
                           <Phone size={14} />
-                          <span>{application.phone}</span>
+                          <span>{application.user?.phone ?? "-"}</span>
                         </div>
                       </div>
                     </td>

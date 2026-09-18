@@ -1,4 +1,4 @@
-// src/pages/News/NewsList.jsx
+// src/pages/Articles/ArticleList.jsx
 
 import React, { useState, useEffect } from "react";
 import {
@@ -10,13 +10,14 @@ import {
   List,
   Newspaper,
 } from "lucide-react";
-import newsService from "../../services/newsService";
+import articleService from "../../services/articleService";
 import Modal from "../../components/Common/Modal";
 import Button from "../../components/Common/Button";
-import NewsForm from "./NewsForm";
+import ArticleForm from "./ArticleForm";
+import notify from "../../lib/notify";
 
-const NewsList = () => {
-  const [news, setNews] = useState([]);
+const ArticleList = () => {
+  const [articles, setArticles] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
@@ -24,46 +25,47 @@ const NewsList = () => {
 
   // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedNews, setSelectedNews] = useState(null);
+  const [selectedArticle, setSelectedArticle] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    fetchNews();
-  }, []);
-
-  const fetchNews = async () => {
+  const fetchArticles = async () => {
     try {
       setLoading(true);
-      const data = await newsService.getAll();
-      setNews(data);
+      const data = await articleService.getAll();
+      setArticles(data);
       setError(null);
     } catch (err) {
-      setError("Failed to load news");
+      setError(err.message || "Failed to load articles");
       console.error(err);
     } finally {
       setLoading(false);
     }
   };
 
+
+  useEffect(() => {
+    fetchArticles();
+  }, []);
+
   const handleCreate = () => {
-    setSelectedNews(null);
+    setSelectedArticle(null);
     setIsModalOpen(true);
   };
 
-  const handleEdit = (newsItem) => {
-    setSelectedNews(newsItem);
+  const handleEdit = (articleItem) => {
+    setSelectedArticle(articleItem);
     setIsModalOpen(true);
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this news?")) return;
+    if (!window.confirm("Are you sure you want to delete this article?")) return;
 
     try {
-      await newsService.delete(id);
-      setNews(news.filter((n) => n.id !== id));
-      alert("News deleted successfully");
+      await articleService.delete(id);
+      setArticles(articles.filter((n) => n.id !== id));
+      notify.success("Article deleted successfully");
     } catch (err) {
-      alert("Failed to delete news");
+      notify.error("Failed to delete article");
       console.error(err);
     }
   };
@@ -72,19 +74,19 @@ const NewsList = () => {
     try {
       setIsSubmitting(true);
 
-      if (selectedNews) {
-        const updated = await newsService.update(selectedNews.id, formData);
-        setNews(news.map((n) => (n.id === selectedNews.id ? updated : n)));
-        alert("News updated successfully");
+      if (selectedArticle) {
+        const updated = await articleService.update(selectedArticle.id, formData);
+        setArticles(articles.map((n) => (n.id === selectedArticle.id ? updated : n)));
+        notify.success("Article updated successfully");
       } else {
-        const created = await newsService.create(formData);
-        setNews([created, ...news]);
-        alert("News created successfully");
+        const created = await articleService.create(formData);
+        setArticles([created, ...articles]);
+        notify.success("Article created successfully");
       }
 
       setIsModalOpen(false);
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to save news");
+      notify.error(err.message || "Failed to save article");
       console.error(err);
     } finally {
       setIsSubmitting(false);
@@ -94,7 +96,7 @@ const NewsList = () => {
   const handleCloseModal = () => {
     if (!isSubmitting) {
       setIsModalOpen(false);
-      setSelectedNews(null);
+      setSelectedArticle(null);
     }
   };
 
@@ -106,8 +108,8 @@ const NewsList = () => {
     });
   };
 
-  // Filter news by search term only (tidak ada status published di backend)
-  const filteredNews = news
+  // Filter articles by search term only (tidak ada status published di backend)
+  const filteredArticles = articles
     .filter((item) => {
       const q = searchTerm.toLowerCase();
       return (
@@ -193,8 +195,8 @@ const NewsList = () => {
         </div>
       </div>
 
-      {/* News Display */}
-      {filteredNews.length === 0 ? (
+      {/* Article Display */}
+      {filteredArticles.length === 0 ? (
         <div className="text-center py-12 bg-white rounded-lg border border-slate-200">
           <Newspaper className="w-16 h-16 text-slate-300 mx-auto mb-4" />
           <p className="text-slate-600">
@@ -206,7 +208,7 @@ const NewsList = () => {
       ) : viewMode === "grid" ? (
         // Grid View
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
-          {filteredNews.map((item) => (
+          {filteredArticles.map((item) => (
             <div
               key={item.id}
               className="bg-white rounded-lg border border-slate-200 overflow-hidden hover:shadow-md transition-shadow"
@@ -281,7 +283,7 @@ const NewsList = () => {
               </tr>
             </thead>
             <tbody className="divide-y divide-slate-200">
-              {filteredNews.map((item) => (
+              {filteredArticles.map((item) => (
                 <tr key={item.id} className="hover:bg-slate-50">
                   <td className="px-6 py-4">
                     <div className="flex items-center gap-3">
@@ -342,11 +344,11 @@ const NewsList = () => {
       <Modal
         isOpen={isModalOpen}
         onClose={handleCloseModal}
-        title={selectedNews ? "Edit Article" : "Add New Article"}
+        title={selectedArticle ? "Edit Article" : "Add New Article"}
         size="lg"
       >
-        <NewsForm
-          news={selectedNews}
+        <ArticleForm
+          article={selectedArticle}
           onSubmit={handleSubmit}
           onCancel={handleCloseModal}
           isLoading={isSubmitting}
@@ -356,4 +358,4 @@ const NewsList = () => {
   );
 };
 
-export default NewsList;
+export default ArticleList;

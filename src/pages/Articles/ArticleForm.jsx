@@ -1,14 +1,14 @@
-/* eslint-disable react-hooks/set-state-in-effect */
-// src/pages/News/NewsForm.jsx
+// src/pages/Articles/ArticleForm.jsx
 
 import React, { useState, useEffect } from "react";
 import Input from "../../components/Common/Input";
 import Button from "../../components/Common/Button";
 import RichTextEditor from "../../components/Common/RichTextEditor";
-import newsService from "../../services/newsService";
+import articleService from "../../services/articleService";
 import { Save, X, Link as LinkIcon } from "lucide-react";
+import notify from "../../lib/notify";
 
-const NewsForm = ({ news, onSubmit, onCancel, isLoading }) => {
+const ArticleForm = ({ article, onSubmit, onCancel, isLoading }) => {
   const [formData, setFormData] = useState({
     title: "",
     content: "",
@@ -22,16 +22,16 @@ const NewsForm = ({ news, onSubmit, onCancel, isLoading }) => {
   const [imagePreview, setImagePreview] = useState("");
 
   useEffect(() => {
-    if (news) {
+    if (article) {
       setFormData({
-        title: news.title || "",
-        content: news.content || "",
-        author: news.author || "",
-        image: news.image || "",
+        title: article.title || "",
+        content: article.content || "",
+        author: article.author || "",
+        image: article.image || "",
       });
-      if (news.image) setImagePreview(news.image);
+      if (article.image) setImagePreview(article.image);
     }
-  }, [news]);
+  }, [article]);
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -48,7 +48,7 @@ const NewsForm = ({ news, onSubmit, onCancel, isLoading }) => {
 
   // Upload gambar inline dari dalam editor
   const handleInlineImageUpload = async (file) => {
-    return await newsService.uploadImage(file);
+    return await articleService.uploadImage(file);
   };
 
   const handleImageModeChange = (mode) => {
@@ -61,8 +61,8 @@ const NewsForm = ({ news, onSubmit, onCancel, isLoading }) => {
   const handleFileChange = (e) => {
     const file = e.target.files[0];
     if (!file) return;
-    if (!file.type.startsWith("image/")) { alert("Please select an image file"); return; }
-    if (file.size > 5 * 1024 * 1024) { alert("Image size must be less than 5MB"); return; }
+    if (!file.type.startsWith("image/")) { notify.error("Please select an image file"); return; }
+    if (file.size > 5 * 1024 * 1024) { notify.error("Image size must be less than 5MB"); return; }
     setImageFile(file);
     const reader = new FileReader();
     reader.onloadend = () => setImagePreview(reader.result);
@@ -192,14 +192,14 @@ const NewsForm = ({ news, onSubmit, onCancel, isLoading }) => {
         onImageUpload={handleInlineImageUpload}
         error={errors.content}
         disabled={isLoading}
-        placeholder="Write your news content here. Use the toolbar to format text, and click 'Insert Image' to add images inside the content..."
+        placeholder="Write your article content here. Use the toolbar to format text, and click 'Insert Image' to add images inside the content..."
         minHeight={350}
       />
 
       {/* Actions */}
       <div className="flex gap-3 pt-2">
         <Button type="submit" variant="primary" disabled={isLoading} icon={Save}>
-          {isLoading ? "Saving..." : news ? "Update News" : "Create News"}
+          {isLoading ? "Saving..." : article ? "Update Article" : "Create Article"}
         </Button>
         <Button type="button" variant="secondary" onClick={onCancel} disabled={isLoading} icon={X}>
           Cancel
@@ -209,4 +209,4 @@ const NewsForm = ({ news, onSubmit, onCancel, isLoading }) => {
   );
 };
 
-export default NewsForm;
+export default ArticleForm;

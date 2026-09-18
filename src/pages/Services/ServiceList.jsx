@@ -6,6 +6,7 @@ import serviceService from "../../services/serviceService";
 import Modal from "../../components/Common/Modal";
 import Button from "../../components/Common/Button";
 import ServiceForm from "./ServiceForm";
+import notify from "../../lib/notify";
 
 const ServiceList = () => {
   const [services, setServices] = useState([]);
@@ -18,10 +19,6 @@ const ServiceList = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedService, setSelectedService] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  useEffect(() => {
-    fetchServices();
-  }, []);
 
   const fetchServices = async () => {
     try {
@@ -36,6 +33,11 @@ const ServiceList = () => {
       setLoading(false);
     }
   };
+
+
+  useEffect(() => {
+    fetchServices();
+  }, []);
 
   const handleCreate = () => {
     setSelectedService(null);
@@ -55,9 +57,9 @@ const ServiceList = () => {
     try {
       await serviceService.delete(id);
       setServices(services.filter((s) => s.id !== id));
-      alert("Service deleted successfully");
+      notify.success("Service deleted successfully");
     } catch (err) {
-      alert("Failed to delete service");
+      notify.error("Failed to delete service");
       console.error(err);
     }
   };
@@ -86,17 +88,17 @@ const ServiceList = () => {
         setServices(
           services.map((s) => (s.id === selectedService.id ? updated : s))
         );
-        alert("Service updated successfully");
+        notify.success("Service updated successfully");
       } else {
         // Create new service
         const created = await serviceService.create(submitData);
         setServices([created, ...services]);
-        alert("Service created successfully");
+        notify.success("Service created successfully");
       }
 
       setIsModalOpen(false);
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to save service");
+      notify.error(err.response?.data?.message || "Failed to save service");
       console.error(err);
     } finally {
       setIsSubmitting(false);
@@ -134,7 +136,7 @@ const ServiceList = () => {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <div>
           <h2 className="text-2xl font-bold text-slate-800">Services</h2>
-          <p className="text-slate-600 mt-1">Manage company services</p>
+          {/* <p className="text-slate-600 mt-1">Manage company services</p> */}
         </div>
         <Button onClick={handleCreate} variant="primary" icon={Plus}>
           Add Service

@@ -1,14 +1,13 @@
 // src/services/careerService.js
-import api from "./api";
+import api, { toDisplayError } from "./api";
 
 const careerService = {
   getAll: async () => {
     try {
       const response = await api.get("/careers");
-      return response.data; //
+      return response.data;
     } catch (error) {
-      console.error("Error fetching careers:", error);
-      throw error;
+      throw toDisplayError(error, "Gagal memuat lowongan");
     }
   },
 
@@ -17,34 +16,64 @@ const careerService = {
       const response = await api.get(`/careers/${id}`);
       return response.data;
     } catch (error) {
-      console.error(`Error fetching career ${id}:`, error);
-      throw error;
+      throw toDisplayError(error, "Gagal memuat lowongan");
     }
   },
 
   create: async (data) => {
     try {
-      const response = await api.post("/careers", data);
+      const response = await api.post("/careers", {
+        title: data.title,
+        description: data.description,
+        requirements: data.requirements,
+        location: data.location,
+        salary: data.salary || undefined,
+        jobType: data.jobType || undefined,
+        experience: data.experience || undefined,
+        status: data.status || "open",
+      });
       return response.data;
     } catch (error) {
-      console.error("Error creating career:", error);
-      throw error;
+      throw toDisplayError(error, "Gagal membuat lowongan");
     }
   },
 
   update: async (id, data) => {
     try {
+      // Kirim setiap field yang ada di payload, termasuk string kosong, karena
+      // backend memperlakukannya sebagai "kosongkan field ini". Versi lama
+      // memakai cek truthy sehingga salary/jobType/experience/status tidak
+      // pernah ikut terkirim dan perubahannya diam-diam hilang.
       const payload = {};
-      if (data.title) payload.title = data.title;
-      if (data.description) payload.description = data.description;
-      if (data.requirements) payload.requirements = data.requirements;
-      if (data.location) payload.location = data.location;
+      const fields = [
+        "title",
+        "description",
+        "requirements",
+        "location",
+        "salary",
+        "jobType",
+        "experience",
+        "status",
+      ];
+      for (const key of fields) {
+        if (data[key] !== undefined) payload[key] = data[key];
+      }
 
       const response = await api.patch(`/careers/${id}`, payload);
       return response.data;
     } catch (error) {
-      console.error(`Error updating career ${id}:`, error);
-      throw error;
+      throw toDisplayError(error, "Gagal memperbarui lowongan");
+    }
+  },
+
+  // Buka/tutup lowongan. Sebelumnya dipanggil CareerList tapi tidak pernah
+  // didefinisikan, sehingga tombolnya melempar TypeError saat diklik.
+  toggleStatus: async (id, status) => {
+    try {
+      const response = await api.patch(`/careers/${id}`, { status });
+      return response.data;
+    } catch (error) {
+      throw toDisplayError(error, "Gagal mengubah status lowongan");
     }
   },
 
@@ -53,18 +82,7 @@ const careerService = {
       const response = await api.delete(`/careers/${id}`);
       return response.data;
     } catch (error) {
-      console.error(`Error deleting career ${id}:`, error);
-      throw error;
-    }
-  },
-
-  getCount: async () => {
-    try {
-      const response = await api.get("/careers");
-      return response.data.data.length;
-    } catch (error) {
-      console.error("Error fetching career count:", error);
-      return 0;
+      throw toDisplayError(error, "Gagal menghapus lowongan");
     }
   },
 };

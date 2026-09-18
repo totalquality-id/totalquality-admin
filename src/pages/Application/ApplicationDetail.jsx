@@ -3,6 +3,7 @@
 import React, { useState } from "react";
 import Button from "../../components/Common/Button";
 import Textarea from "../../components/Common/TextArea";
+import notify from "../../lib/notify";
 import {
   X,
   Mail,
@@ -37,6 +38,16 @@ const ApplicationDetail = ({
     {
       value: "shortlisted",
       label: "Shortlisted",
+      color: "bg-purple-100 text-purple-700",
+    },
+    {
+      value: "interview",
+      label: "Interview",
+      color: "bg-indigo-100 text-indigo-700",
+    },
+    {
+      value: "accepted",
+      label: "Accepted",
       color: "bg-green-100 text-green-700",
     },
     { value: "rejected", label: "Rejected", color: "bg-red-100 text-red-700" },
@@ -45,10 +56,9 @@ const ApplicationDetail = ({
   const handleSave = async () => {
     setIsSaving(true);
     try {
-      await onUpdateStatus(application.id, { status, notes }); // Call service.update
+      await onUpdateStatus(application.id, status, notes);
     } catch (error) {
-      console.error("Error saving:", error);
-      // Tambah alert error
+      notify.error(error.message || "Gagal menyimpan perubahan");
     } finally {
       setIsSaving(false);
     }
@@ -77,7 +87,7 @@ const ApplicationDetail = ({
         <div className="flex items-center gap-2">
           <Calendar size={16} className="text-slate-500" />
           <span>
-            Applied: {new Date(application.createdAt).toLocaleDateString()}
+            Applied: {new Date(application.appliedAt).toLocaleDateString("id-ID")}
           </span>
         </div>
       </div>

@@ -16,6 +16,7 @@ import eventService from "../../services/eventService";
 import Modal from "../../components/Common/Modal";
 import Button from "../../components/Common/Button";
 import EventForm from "./EventForm";
+import notify from "../../lib/notify";
 
 const EventList = () => {
   const [events, setEvents] = useState([]);
@@ -30,10 +31,6 @@ const EventList = () => {
   const [selectedEvent, setSelectedEvent] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    fetchEvents();
-  }, []);
-
   const fetchEvents = async () => {
     try {
       setLoading(true);
@@ -47,6 +44,11 @@ const EventList = () => {
       setLoading(false);
     }
   };
+
+
+  useEffect(() => {
+    fetchEvents();
+  }, []);
 
   const handleCreate = () => {
     setSelectedEvent(null);
@@ -66,9 +68,9 @@ const EventList = () => {
     try {
       await eventService.delete(id);
       setEvents(events.filter((e) => e.id !== id));
-      alert("Event deleted successfully");
+      notify.success("Event deleted successfully");
     } catch (err) {
-      alert("Failed to delete event");
+      notify.error("Failed to delete event");
       console.error(err);
     }
   };
@@ -80,16 +82,16 @@ const EventList = () => {
       if (selectedEvent) {
         const updated = await eventService.update(selectedEvent.id, formData);
         setEvents(events.map((e) => (e.id === selectedEvent.id ? updated : e)));
-        alert("Event updated successfully");
+        notify.success("Event updated successfully");
       } else {
         const created = await eventService.create(formData);
         setEvents([created, ...events]);
-        alert("Event created successfully");
+        notify.success("Event created successfully");
       }
 
       setIsModalOpen(false);
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to save event");
+      notify.error(err.response?.data?.message || "Failed to save event");
       console.error(err);
     } finally {
       setIsSubmitting(false);
@@ -158,9 +160,9 @@ const EventList = () => {
       <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
         <div>
           <h2 className="text-2xl font-bold text-slate-800">Events</h2>
-          <p className="text-slate-600 mt-1">
+          {/* <p className="text-slate-600 mt-1">
             Manage company events and activities
-          </p>
+          </p> */}
         </div>
         <Button onClick={handleCreate} variant="primary" icon={Plus}>
           Add Event

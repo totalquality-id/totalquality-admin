@@ -18,6 +18,7 @@ import careerService from "../../services/careerService";
 import Modal from "../../components/Common/Modal";
 import Button from "../../components/Common/Button";
 import CareerForm from "./CareerForm";
+import notify from "../../lib/notify";
 
 const CareerList = () => {
   const [careers, setCareers] = useState([]);
@@ -33,10 +34,6 @@ const CareerList = () => {
   const [selectedCareer, setSelectedCareer] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
 
-  useEffect(() => {
-    fetchCareers();
-  }, []);
-
   const fetchCareers = async () => {
     try {
       setLoading(true);
@@ -50,6 +47,11 @@ const CareerList = () => {
       setLoading(false);
     }
   };
+
+
+  useEffect(() => {
+    fetchCareers();
+  }, []);
 
   const handleCreate = () => {
     setSelectedCareer(null);
@@ -71,9 +73,9 @@ const CareerList = () => {
     try {
       await careerService.delete(id);
       setCareers(careers.filter((c) => c.id !== id));
-      alert("Career deleted successfully");
+      notify.success("Career deleted successfully");
     } catch (err) {
-      alert("Failed to delete career");
+      notify.error("Failed to delete career");
       console.error(err);
     }
   };
@@ -83,11 +85,11 @@ const CareerList = () => {
       const newStatus = currentStatus === "open" ? "closed" : "open";
       const updated = await careerService.toggleStatus(id, newStatus);
       setCareers(careers.map((c) => (c.id === id ? updated : c)));
-      alert(
+      notify.success(
         `Career ${newStatus === "open" ? "opened" : "closed"} successfully`
       );
     } catch (err) {
-      alert("Failed to update career status");
+      notify.error("Failed to update career status");
       console.error(err);
     }
   };
@@ -101,16 +103,16 @@ const CareerList = () => {
         setCareers(
           careers.map((c) => (c.id === selectedCareer.id ? updated : c))
         );
-        alert("Career updated successfully");
+        notify.success("Career updated successfully");
       } else {
         const created = await careerService.create(formData);
         setCareers([created, ...careers]);
-        alert("Career created successfully");
+        notify.success("Career created successfully");
       }
 
       setIsModalOpen(false);
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to save career");
+      notify.error(err.response?.data?.message || "Failed to save career");
       console.error(err);
     } finally {
       setIsSubmitting(false);

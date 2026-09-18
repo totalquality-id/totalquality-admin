@@ -1,6 +1,6 @@
 // src/services/applicationService.js
 
-import api from "./api";
+import api, { toDisplayError } from "./api";
 
 const applicationService = {
   getAll: async () => {
@@ -8,8 +8,7 @@ const applicationService = {
       const response = await api.get("/applications");
       return response.data;
     } catch (error) {
-      console.error("Error fetching applications:", error);
-      throw error;
+      throw toDisplayError(error, "Gagal memuat lamaran");
     }
   },
 
@@ -18,8 +17,7 @@ const applicationService = {
       const response = await api.get(`/applications/${id}`);
       return response.data;
     } catch (error) {
-      console.error(`Error fetching application ${id}:`, error);
-      throw error;
+      throw toDisplayError(error, "Gagal memuat detail lamaran");
     }
   },
 
@@ -28,11 +26,7 @@ const applicationService = {
       const response = await api.get(`/applications/career/${careerId}`);
       return response.data;
     } catch (error) {
-      console.error(
-        `Error fetching applications for career ${careerId}:`,
-        error
-      );
-      throw error;
+      throw toDisplayError(error, "Gagal memuat lamaran untuk lowongan ini");
     }
   },
 
@@ -44,8 +38,7 @@ const applicationService = {
       });
       return response.data;
     } catch (error) {
-      console.error(`Error updating application ${id}:`, error);
-      throw error;
+      throw toDisplayError(error, "Gagal memperbarui status lamaran");
     }
   },
 
@@ -54,32 +47,15 @@ const applicationService = {
       const response = await api.delete(`/applications/${id}`);
       return response.data;
     } catch (error) {
-      console.error(`Error deleting application ${id}:`, error);
-      throw error;
-    }
-  },
-
-  downloadResume: async (id) => {
-    try {
-      const response = await api.get(`/applications/${id}/resume`, {
-        responseType: "blob",
-      });
-      return response.data;
-    } catch (error) {
-      console.error(`Error downloading resume for application ${id}:`, error);
-      throw error;
-    }
-  },
-
-  getStatistics: async () => {
-    try {
-      const response = await api.get("/applications/statistics");
-      return response.data;
-    } catch (error) {
-      console.error("Error fetching application statistics:", error);
-      throw error;
+      throw toDisplayError(error, "Gagal menghapus lamaran");
     }
   },
 };
+
+// Catatan: downloadResume() dan getStatistics() dihapus dari service ini.
+// Keduanya memanggil /applications/{id}/resume dan /applications/statistics
+// yang tidak ada di backend, dan schema Application tidak punya kolom berkas
+// CV sama sekali. Statistik per status dihitung di ApplicationList dari data
+// yang sudah diambil, tanpa request tambahan.
 
 export default applicationService;

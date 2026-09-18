@@ -1,0 +1,3 @@
+# Panel administrasi internal. Tidak boleh diindeks mesin pencari.
+User-agent: *
+Disallow: /

@@ -18,6 +18,7 @@ import forumService from "../../services/forumService";
 import Modal from "../../components/Common/Modal";
 import Button from "../../components/Common/Button";
 import ForumForm from "./ForumForm";
+import notify from "../../lib/notify";
 
 const ForumList = () => {
   const [posts, setPosts] = useState([]);
@@ -30,10 +31,6 @@ const ForumList = () => {
   const [isModalOpen, setIsModalOpen] = useState(false);
   const [selectedPost, setSelectedPost] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
-
-  useEffect(() => {
-    fetchPosts();
-  }, []);
 
   const fetchPosts = async () => {
     try {
@@ -48,6 +45,11 @@ const ForumList = () => {
       setLoading(false);
     }
   };
+
+
+  useEffect(() => {
+    fetchPosts();
+  }, []);
 
   const handleCreate = () => {
     setSelectedPost(null);
@@ -67,9 +69,9 @@ const ForumList = () => {
     try {
       await forumService.delete(id);
       setPosts(posts.filter((p) => p.id !== id));
-      alert("Post deleted successfully");
+      notify.success("Post deleted successfully");
     } catch (err) {
-      alert("Failed to delete post");
+      notify.error("Failed to delete post");
       console.error(err);
     }
   };
@@ -78,9 +80,9 @@ const ForumList = () => {
     try {
       const updated = await forumService.togglePin(id, !currentStatus);
       setPosts(posts.map((p) => (p.id === id ? updated : p)));
-      alert(`Post ${!currentStatus ? "pinned" : "unpinned"} successfully`);
+      notify.success(`Post ${!currentStatus ? "pinned" : "unpinned"} successfully`);
     } catch (err) {
-      alert("Failed to update pin status");
+      notify.error("Failed to update pin status");
       console.error(err);
     }
   };
@@ -89,9 +91,9 @@ const ForumList = () => {
     try {
       const updated = await forumService.toggleLock(id, !currentStatus);
       setPosts(posts.map((p) => (p.id === id ? updated : p)));
-      alert(`Post ${!currentStatus ? "locked" : "unlocked"} successfully`);
+      notify.success(`Post ${!currentStatus ? "locked" : "unlocked"} successfully`);
     } catch (err) {
-      alert("Failed to update lock status");
+      notify.error("Failed to update lock status");
       console.error(err);
     }
   };
@@ -103,16 +105,16 @@ const ForumList = () => {
       if (selectedPost) {
         const updated = await forumService.update(selectedPost.id, formData);
         setPosts(posts.map((p) => (p.id === selectedPost.id ? updated : p)));
-        alert("Post updated successfully");
+        notify.success("Post updated successfully");
       } else {
         const created = await forumService.create(formData);
         setPosts([created, ...posts]);
-        alert("Post created successfully");
+        notify.success("Post created successfully");
       }
 
       setIsModalOpen(false);
     } catch (err) {
-      alert(err.response?.data?.message || "Failed to save post");
+      notify.error(err.response?.data?.message || "Failed to save post");
       console.error(err);
     } finally {
       setIsSubmitting(false);

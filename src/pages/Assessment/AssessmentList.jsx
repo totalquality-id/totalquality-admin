@@ -1,22 +1,50 @@
-// src/pages/Assessments/AssessmentList.jsx
+// src/pages/Assessment/AssessmentList.jsx
+//
+// Assessment di sistem ini adalah HASIL pengisian dari pengunjung publik,
+// bukan template yang dibuat admin. Versi sebelumnya memperlakukannya sebagai
+// CRUD penuh: ada tombol Create/Edit/Toggle Active yang memanggil
+// assessmentService.create/update/toggleActive. Tidak satu pun fungsi itu ada
+// di service, dan backend juga tidak punya endpointnya, sehingga setiap tombol
+// melempar TypeError begitu diklik.
+//
+// Halaman ini sekarang mencerminkan kemampuan backend yang sebenarnya:
+// lihat daftar, lihat detail jawaban, hapus, dan ringkasan statistik.
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo, useCallback } from "react";
 import {
-  Plus,
-  Edit,
-  Trash2,
   Search,
+  Trash2,
   BarChart,
-  Clock,
-  CheckCircle,
   Eye,
-  EyeOff,
   FileText,
+  User,
+  Calendar,
+  RefreshCw,
+  AlertCircle,
 } from "lucide-react";
 import assessmentService from "../../services/assessmentService";
 import Modal from "../../components/Common/Modal";
 import Button from "../../components/Common/Button";
-import AssessmentForm from "./AssessmentForm";
+import notify from "../../lib/notify";
+
+const TYPE_LABELS = {
+  personality: "Personality",
+  company: "Company",
+};
+
+const TYPE_BADGES = {
+  personality: "bg-purple-100 text-purple-700",
+  company: "bg-blue-100 text-blue-700",
+};
+
+const formatDate = (value) =>
+  new Date(value).toLocaleDateString("id-ID", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+    hour: "2-digit",
+    minute: "2-digit",
+  });
 
 const AssessmentList = () => {
   const [assessments, setAssessments] = useState([]);
@@ -24,153 +52,84 @@ const AssessmentList = () => {
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
   const [filterType, setFilterType] = useState("all");
-  const [filterStatus, setFilterStatus] = useState("all"); // all, active, inactive
 
-  // Modal states
-  const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedAssessment, setSelectedAssessment] = useState(null);
-  const [isSubmitting, setIsSubmitting] = useState(false);
+  const [selected, setSelected] = useState(null);
+  const [isDetailOpen, setIsDetailOpen] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
 
-  useEffect(() => {
-    fetchAssessments();
-  }, []);
-
-  const fetchAssessments = async () => {
+  const fetchAssessments = useCallback(async () => {
     try {
       setLoading(true);
-      const data = await assessmentService.getAll();
-      setAssessments(data);
       setError(null);
+      setAssessments(await assessmentService.getAll());
     } catch (err) {
-      setError("Failed to load assessments");
-      console.error(err);
+      setError(err.message);
     } finally {
       setLoading(false);
     }
+  }, []);
+
+  useEffect(() => {
+    fetchAssessments();
+  }, [fetchAssessments]);
+
+  const handleViewDetail = (assessment) => {
+    setSelected(assessment);
+    setIsDetailOpen(true);
   };
 
-  const handleCreate = () => {
-    setSelectedAssessment(null);
-    setIsModalOpen(true);
-  };
-
-  const handleEdit = (assessment) => {
-    setSelectedAssessment(assessment);
-    setIsModalOpen(true);
+  const handleCloseDetail = () => {
+    setIsDetailOpen(false);
+    setSelected(null);
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this assessment?")) {
+    if (
+      !window.confirm(
+        "Hapus hasil assessment ini? Data jawaban akan hilang permanen."
+      )
+    ) {
       return;
     }
 
+    setDeletingId(id);
     try {
       await assessmentService.delete(id);
-      setAssessments(assessments.filter((a) => a.id !== id));
-      alert("Assessment deleted successfully");
+      setAssessments((prev) => prev.filter((a) => a.id !== id));
+      if (selected?.id === id) handleCloseDetail();
+      notify.success("Hasil assessment berhasil dihapus");
     } catch (err) {
-      alert("Failed to delete assessment");
-      console.error(err);
-    }
-  };
-
-  const handleToggleActive = async (id, currentStatus) => {
-    try {
-      const updated = await assessmentService.toggleActive(id, !currentStatus);
-      setAssessments(assessments.map((a) => (a.id === id ? updated : a)));
-      alert(
-        `Assessment ${
-          !currentStatus ? "activated" : "deactivated"
-        } successfully`
-      );
-    } catch (err) {
-      alert("Failed to update assessment status");
-      console.error(err);
-    }
-  };
-
-  const handleSubmit = async (formData) => {
-    try {
-      setIsSubmitting(true);
-
-      if (selectedAssessment) {
-        const updated = await assessmentService.update(
-          selectedAssessment.id,
-          formData
-        );
-        setAssessments(
-          assessments.map((a) => (a.id === selectedAssessment.id ? updated : a))
-        );
-        alert("Assessment updated successfully");
-      } else {
-        const created = await assessmentService.create(formData);
-        setAssessments([created, ...assessments]);
-        alert("Assessment created successfully");
-      }
-
-      setIsModalOpen(false);
-    } catch (err) {
-      alert(err.response?.data?.message || "Failed to save assessment");
-      console.error(err);
+      notify.error(err.message);
     } finally {
-      setIsSubmitting(false);
+      setDeletingId(null);
     }
   };
 
-  const handleCloseModal = () => {
-    if (!isSubmitting) {
-      setIsModalOpen(false);
-      setSelectedAssessment(null);
+  const stats = useMemo(() => {
+    const summary = { total: assessments.length, personality: 0, company: 0 };
+    for (const item of assessments) {
+      if (item.type in summary) summary[item.type] += 1;
     }
-  };
+    return summary;
+  }, [assessments]);
 
-  const getTypeLabel = (type) => {
-    const labels = {
-      quiz: "Quiz",
-      test: "Test",
-      survey: "Survey",
-      evaluation: "Evaluation",
-    };
-    return labels[type] || type;
-  };
-
-  const getTypeColor = (type) => {
-    const colors = {
-      quiz: "bg-blue-100 text-blue-700",
-      test: "bg-purple-100 text-purple-700",
-      survey: "bg-green-100 text-green-700",
-      evaluation: "bg-orange-100 text-orange-700",
-    };
-    return colors[type] || "bg-slate-100 text-slate-700";
-  };
-
-  // Filter assessments
-  const filteredAssessments = assessments
-    .filter((assessment) => {
-      const matchesSearch =
-        assessment.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        assessment.description
-          ?.toLowerCase()
-          .includes(searchTerm.toLowerCase());
-
-      const matchesType =
-        filterType === "all" || assessment.type === filterType;
-
-      const matchesStatus =
-        filterStatus === "all" ||
-        (filterStatus === "active" && assessment.active) ||
-        (filterStatus === "inactive" && !assessment.active);
-
-      return matchesSearch && matchesType && matchesStatus;
-    })
-    .sort((a, b) => new Date(b.createdAt) - new Date(a.createdAt));
+  const filtered = useMemo(() => {
+    const q = searchTerm.trim().toLowerCase();
+    return assessments.filter((item) => {
+      if (filterType !== "all" && item.type !== filterType) return false;
+      if (!q) return true;
+      return [item.name, item.job, item.city, item.user?.email]
+        .filter(Boolean)
+        .some((field) => String(field).toLowerCase().includes(q));
+    });
+  }, [assessments, filterType, searchTerm]);
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-slate-600">Loading assessments...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto" />
+          <p className="mt-4 text-slate-600">Memuat hasil assessment...</p>
         </div>
       </div>
     );
@@ -178,210 +137,252 @@ const AssessmentList = () => {
 
   return (
     <div>
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-slate-800">Assessments</h2>
+          <h2 className="text-2xl font-bold text-slate-800">Hasil Assessment</h2>
           <p className="text-slate-600 mt-1">
-            Manage quizzes, tests, and evaluations
+            Jawaban self-assessment yang dikirim pengunjung website.
           </p>
         </div>
-        <Button onClick={handleCreate} variant="primary" icon={Plus}>
-          Add Assessment
-        </Button>
+        <button
+          onClick={fetchAssessments}
+          className="inline-flex items-center gap-2 px-3 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
+        >
+          <RefreshCw size={16} />
+          <span className="hidden sm:inline">Refresh</span>
+        </button>
       </div>
 
       {error && (
-        <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-          {error}
+        <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-start gap-3">
+          <AlertCircle size={20} className="flex-shrink-0 mt-0.5" />
+          <p className="text-sm">{error}</p>
         </div>
       )}
 
-      {/* Filters & Search */}
-      <div className="mb-6 space-y-4">
-        <div className="flex flex-col sm:flex-row gap-4">
-          <div className="relative flex-1">
-            <Search
-              className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"
-              size={20}
-            />
-            <input
-              type="text"
-              placeholder="Search assessments..."
-              value={searchTerm}
-              onChange={(e) => setSearchTerm(e.target.value)}
-              className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
-            />
+      {/* Ringkasan */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+        {[
+          { label: "Total", value: stats.total, color: "bg-slate-600" },
+          {
+            label: "Personality",
+            value: stats.personality,
+            color: "bg-purple-500",
+          },
+          { label: "Company", value: stats.company, color: "bg-blue-500" },
+        ].map((card) => (
+          <div
+            key={card.label}
+            className="bg-white rounded-lg shadow-sm p-5 border border-slate-200"
+          >
+            <div
+              className={`w-10 h-10 ${card.color} rounded-lg flex items-center justify-center mb-3`}
+            >
+              <BarChart className="text-white" size={20} />
+            </div>
+            <p className="text-slate-600 text-sm">{card.label}</p>
+            <p className="text-2xl font-bold text-slate-800">{card.value}</p>
           </div>
-        </div>
-
-        <div className="flex flex-wrap gap-2">
-          {/* Status Filter */}
-          {["all", "active", "inactive"].map((status) => (
-            <button
-              key={status}
-              onClick={() => setFilterStatus(status)}
-              className={`
-                px-4 py-2 rounded-lg text-sm font-medium transition-colors capitalize
-                ${
-                  filterStatus === status
-                    ? "bg-blue-600 text-white"
-                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                }
-              `}
-            >
-              {status}
-            </button>
-          ))}
-
-          {/* Type Filter */}
-          {["all", "quiz", "test", "survey", "evaluation"].map((type) => (
-            <button
-              key={type}
-              onClick={() => setFilterType(type)}
-              className={`
-                px-4 py-2 rounded-lg text-sm font-medium transition-colors capitalize
-                ${
-                  filterType === type
-                    ? "bg-purple-600 text-white"
-                    : "bg-slate-100 text-slate-600 hover:bg-slate-200"
-                }
-              `}
-            >
-              {type === "all" ? "All Types" : getTypeLabel(type)}
-            </button>
-          ))}
-        </div>
+        ))}
       </div>
 
-      {/* Assessments List */}
-      {filteredAssessments.length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-lg border border-slate-200">
-          <BarChart className="w-16 h-16 text-slate-300 mx-auto mb-4" />
+      {/* Filter */}
+      <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4 mb-6 flex flex-col sm:flex-row gap-3">
+        <div className="relative flex-1">
+          <Search
+            size={18}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
+          />
+          <input
+            type="search"
+            value={searchTerm}
+            onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Cari nama, pekerjaan, kota, atau email..."
+            aria-label="Cari hasil assessment"
+            className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+          />
+        </div>
+
+        <select
+          value={filterType}
+          onChange={(e) => setFilterType(e.target.value)}
+          aria-label="Filter tipe assessment"
+          className="px-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
+        >
+          <option value="all">Semua Tipe</option>
+          <option value="personality">Personality</option>
+          <option value="company">Company</option>
+        </select>
+      </div>
+
+      {/* Daftar */}
+      {filtered.length === 0 ? (
+        <div className="bg-white rounded-lg shadow-sm border border-slate-200 py-16 text-center">
+          <FileText className="w-16 h-16 text-slate-300 mx-auto mb-4" />
           <p className="text-slate-600">
-            {searchTerm
-              ? "No assessments found matching your search"
-              : "No assessments yet. Create your first assessment!"}
+            {assessments.length === 0
+              ? "Belum ada pengunjung yang mengisi assessment."
+              : "Tidak ada hasil yang cocok dengan filter."}
           </p>
         </div>
       ) : (
-        <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-          {filteredAssessments.map((assessment) => (
-            <div
-              key={assessment.id}
-              className="bg-white rounded-lg border border-slate-200 p-6 hover:shadow-md transition-shadow"
-            >
-              {/* Header */}
-              <div className="flex items-start justify-between mb-4">
-                <div className="flex-1">
-                  <div className="flex items-center gap-2 mb-2">
-                    <span
-                      className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${getTypeColor(
-                        assessment.type
-                      )}`}
-                    >
-                      {getTypeLabel(assessment.type)}
-                    </span>
-                    <span
-                      className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${
-                        assessment.active
-                          ? "bg-green-100 text-green-700"
-                          : "bg-slate-100 text-slate-600"
-                      }`}
-                    >
-                      {assessment.active ? "Active" : "Inactive"}
-                    </span>
-                  </div>
-                  <h3 className="text-lg font-semibold text-slate-800">
-                    {assessment.title}
-                  </h3>
-                </div>
-              </div>
-
-              {/* Description */}
-              <p className="text-slate-600 text-sm mb-4 line-clamp-2">
-                {assessment.description}
-              </p>
-
-              {/* Stats */}
-              <div className="grid grid-cols-3 gap-4 mb-4 py-4 border-y border-slate-200">
-                <div className="text-center">
-                  <div className="flex items-center justify-center gap-1 text-blue-600 mb-1">
-                    <FileText size={16} />
-                  </div>
-                  <p className="text-xs text-slate-500">Questions</p>
-                  <p className="text-lg font-semibold text-slate-800">
-                    {assessment.questions?.length || 0}
-                  </p>
-                </div>
-                <div className="text-center">
-                  <div className="flex items-center justify-center gap-1 text-purple-600 mb-1">
-                    <Clock size={16} />
-                  </div>
-                  <p className="text-xs text-slate-500">Duration</p>
-                  <p className="text-lg font-semibold text-slate-800">
-                    {assessment.duration}m
-                  </p>
-                </div>
-                <div className="text-center">
-                  <div className="flex items-center justify-center gap-1 text-green-600 mb-1">
-                    <CheckCircle size={16} />
-                  </div>
-                  <p className="text-xs text-slate-500">Pass Score</p>
-                  <p className="text-lg font-semibold text-slate-800">
-                    {assessment.passingScore}%
-                  </p>
-                </div>
-              </div>
-
-              {/* Actions */}
-              <div className="flex gap-2">
-                <Button
-                  onClick={() =>
-                    handleToggleActive(assessment.id, assessment.active)
-                  }
-                  variant="outline"
-                  size="sm"
-                  icon={assessment.active ? EyeOff : Eye}
-                  className="flex-1"
-                >
-                  {assessment.active ? "Deactivate" : "Activate"}
-                </Button>
-                <Button
-                  onClick={() => handleEdit(assessment)}
-                  variant="outline"
-                  size="sm"
-                  icon={Edit}
-                >
-                  Edit
-                </Button>
-                <Button
-                  onClick={() => handleDelete(assessment.id)}
-                  variant="danger"
-                  size="sm"
-                  icon={Trash2}
-                >
-                  Delete
-                </Button>
-              </div>
-            </div>
-          ))}
+        <div className="bg-white rounded-lg shadow-sm border border-slate-200 overflow-hidden">
+          <div className="overflow-x-auto">
+            <table className="w-full text-sm">
+              <thead className="bg-slate-50 text-slate-600">
+                <tr>
+                  <th className="text-left px-4 py-3 font-medium">Nama</th>
+                  <th className="text-left px-4 py-3 font-medium">Tipe</th>
+                  <th className="text-left px-4 py-3 font-medium hidden md:table-cell">
+                    Pekerjaan
+                  </th>
+                  <th className="text-left px-4 py-3 font-medium hidden lg:table-cell">
+                    Kota
+                  </th>
+                  <th className="text-left px-4 py-3 font-medium hidden sm:table-cell">
+                    Tanggal
+                  </th>
+                  <th className="text-right px-4 py-3 font-medium">Aksi</th>
+                </tr>
+              </thead>
+              <tbody className="divide-y divide-slate-100">
+                {filtered.map((item) => (
+                  <tr key={item.id} className="hover:bg-slate-50">
+                    <td className="px-4 py-3">
+                      <p className="font-medium text-slate-800">{item.name}</p>
+                      {item.user?.email && (
+                        <p className="text-xs text-slate-500">
+                          {item.user.email}
+                        </p>
+                      )}
+                    </td>
+                    <td className="px-4 py-3">
+                      <span
+                        className={`inline-block px-2 py-1 rounded-full text-xs font-medium ${
+                          TYPE_BADGES[item.type] ?? "bg-slate-100 text-slate-700"
+                        }`}
+                      >
+                        {TYPE_LABELS[item.type] ?? item.type}
+                      </span>
+                    </td>
+                    <td className="px-4 py-3 text-slate-600 hidden md:table-cell">
+                      {item.job || "-"}
+                    </td>
+                    <td className="px-4 py-3 text-slate-600 hidden lg:table-cell">
+                      {item.city || "-"}
+                    </td>
+                    <td className="px-4 py-3 text-slate-600 hidden sm:table-cell whitespace-nowrap">
+                      {formatDate(item.createdAt)}
+                    </td>
+                    <td className="px-4 py-3">
+                      <div className="flex items-center justify-end gap-1">
+                        <button
+                          onClick={() => handleViewDetail(item)}
+                          className="p-2 rounded hover:bg-slate-200 text-slate-600"
+                          aria-label={`Lihat detail assessment ${item.name}`}
+                          title="Lihat detail"
+                        >
+                          <Eye size={16} />
+                        </button>
+                        <button
+                          onClick={() => handleDelete(item.id)}
+                          disabled={deletingId === item.id}
+                          className="p-2 rounded hover:bg-red-50 text-red-600 disabled:opacity-40"
+                          aria-label={`Hapus assessment ${item.name}`}
+                          title="Hapus"
+                        >
+                          <Trash2 size={16} />
+                        </button>
+                      </div>
+                    </td>
+                  </tr>
+                ))}
+              </tbody>
+            </table>
+          </div>
         </div>
       )}
 
-      {/* Modal for Create/Edit */}
+      {/* Detail */}
       <Modal
-        isOpen={isModalOpen}
-        onClose={handleCloseModal}
-        title={selectedAssessment ? "Edit Assessment" : "Add New Assessment"}
-        size="xl"
+        isOpen={isDetailOpen}
+        onClose={handleCloseDetail}
+        title="Detail Hasil Assessment"
       >
-        <AssessmentForm
-          assessment={selectedAssessment}
-          onSubmit={handleSubmit}
-          onCancel={handleCloseModal}
-          isLoading={isSubmitting}
-        />
+        {selected && (
+          <div className="space-y-6">
+            <div className="grid grid-cols-2 gap-4 text-sm">
+              <div className="flex items-start gap-2">
+                <User size={16} className="text-slate-400 mt-0.5" />
+                <div>
+                  <p className="text-slate-500">Nama</p>
+                  <p className="font-medium text-slate-800">{selected.name}</p>
+                </div>
+              </div>
+              <div className="flex items-start gap-2">
+                <Calendar size={16} className="text-slate-400 mt-0.5" />
+                <div>
+                  <p className="text-slate-500">Tanggal</p>
+                  <p className="font-medium text-slate-800">
+                    {formatDate(selected.createdAt)}
+                  </p>
+                </div>
+              </div>
+              <div>
+                <p className="text-slate-500">Pekerjaan</p>
+                <p className="font-medium text-slate-800">
+                  {selected.job || "-"}
+                </p>
+              </div>
+              <div>
+                <p className="text-slate-500">Kota</p>
+                <p className="font-medium text-slate-800">
+                  {selected.city || "-"}
+                </p>
+              </div>
+              <div>
+                <p className="text-slate-500">Usia</p>
+                <p className="font-medium text-slate-800">
+                  {selected.age ?? "-"}
+                </p>
+              </div>
+              <div>
+                <p className="text-slate-500">Gender</p>
+                <p className="font-medium text-slate-800">
+                  {selected.gender || "-"}
+                </p>
+              </div>
+            </div>
+
+            <div>
+              <h4 className="font-semibold text-slate-800 mb-2">Hasil</h4>
+              <pre className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-xs overflow-x-auto max-h-60 text-slate-700">
+                {JSON.stringify(selected.results, null, 2)}
+              </pre>
+            </div>
+
+            <div>
+              <h4 className="font-semibold text-slate-800 mb-2">Jawaban</h4>
+              <pre className="bg-slate-50 border border-slate-200 rounded-lg p-3 text-xs overflow-x-auto max-h-60 text-slate-700">
+                {JSON.stringify(selected.answers, null, 2)}
+              </pre>
+            </div>
+
+            <div className="flex justify-end gap-2 pt-2 border-t border-slate-200">
+              <Button variant="secondary" onClick={handleCloseDetail}>
+                Tutup
+              </Button>
+              <Button
+                variant="danger"
+                onClick={() => handleDelete(selected.id)}
+                disabled={deletingId === selected.id}
+              >
+                <Trash2 size={16} className="mr-2" />
+                Hapus
+              </Button>
+            </div>
+          </div>
+        )}
       </Modal>
     </div>
   );

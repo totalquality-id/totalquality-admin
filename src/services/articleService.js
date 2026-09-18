@@ -1,61 +1,53 @@
-// src/services/newsService.js
+// src/services/articleService.js
 
-import api from "./api";
+import api, { toDisplayError } from "./api";
 
-const newsService = {
-  // Upload image file — folder "news" agar terpisah dari events dan services
+const articleService = {
+  // Upload gambar — folder "articles" agar terpisah dari events dan services
   uploadImage: async (file) => {
     try {
       const formData = new FormData();
       formData.append("file", file);
-      formData.append("folder", "news");
+      formData.append("folder", "articles");
 
       const response = await api.post("/upload", formData, {
-        headers: {
-          "Content-Type": "multipart/form-data",
-        },
+        headers: { "Content-Type": "multipart/form-data" },
       });
 
       return response.data.url;
     } catch (error) {
-      console.error("Error uploading image:", error);
-      throw error;
+      throw toDisplayError(error, "Gagal mengunggah gambar");
     }
   },
 
-  // Get all news
   getAll: async () => {
     try {
-      const response = await api.get("/news");
+      const response = await api.get("/articles");
       return response.data;
     } catch (error) {
-      console.error("Error fetching news:", error);
-      throw error;
+      throw toDisplayError(error, "Gagal memuat articles");
     }
   },
 
-  // Get news by ID
   getById: async (id) => {
     try {
-      const response = await api.get(`/news/${id}`);
+      const response = await api.get(`/articles/${id}`);
       return response.data;
     } catch (error) {
-      console.error(`Error fetching news ${id}:`, error);
-      throw error;
+      throw toDisplayError(error, "Gagal memuat article");
     }
   },
 
-  // Create new news
   create: async (data) => {
     try {
       let imageUrl = data.image;
 
       // Jika ada file gambar, upload dulu baru kirim URL-nya
       if (data.imageFile) {
-        imageUrl = await newsService.uploadImage(data.imageFile);
+        imageUrl = await articleService.uploadImage(data.imageFile);
       }
 
-      const response = await api.post("/news", {
+      const response = await api.post("/articles", {
         title: data.title,
         content: data.content,
         author: data.author || undefined,
@@ -64,19 +56,16 @@ const newsService = {
 
       return response.data;
     } catch (error) {
-      console.error("Error creating news:", error);
-      throw error;
+      throw toDisplayError(error, "Gagal membuat article");
     }
   },
 
-  // Update news
   update: async (id, data) => {
     try {
       let imageUrl = data.image;
 
-      // Jika ada file gambar baru, upload dulu
       if (data.imageFile) {
-        imageUrl = await newsService.uploadImage(data.imageFile);
+        imageUrl = await articleService.uploadImage(data.imageFile);
       }
 
       const payload = {};
@@ -85,24 +74,21 @@ const newsService = {
       if (data.author !== undefined) payload.author = data.author;
       if (imageUrl !== undefined) payload.image = imageUrl;
 
-      const response = await api.patch(`/news/${id}`, payload);
+      const response = await api.patch(`/articles/${id}`, payload);
       return response.data;
     } catch (error) {
-      console.error(`Error updating news ${id}:`, error);
-      throw error;
+      throw toDisplayError(error, "Gagal memperbarui article");
     }
   },
 
-  // Delete news
   delete: async (id) => {
     try {
-      const response = await api.delete(`/news/${id}`);
+      const response = await api.delete(`/articles/${id}`);
       return response.data;
     } catch (error) {
-      console.error(`Error deleting news ${id}:`, error);
-      throw error;
+      throw toDisplayError(error, "Gagal menghapus article");
     }
   },
 };
 
-export default newsService;
+export default articleService;

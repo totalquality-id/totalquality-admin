@@ -1,7 +1,8 @@
 // src/pages/Login.jsx
 
-import React, { useState, useEffect } from "react";
-import { LogIn, AlertCircle } from "lucide-react";
+import React, { useState } from "react";
+import { Navigate, useLocation, useNavigate } from "react-router-dom";
+import { AlertCircle } from "lucide-react";
 import authService from "../services/authService";
 
 const Login = () => {
@@ -11,12 +12,18 @@ const Login = () => {
   });
   const [error, setError] = useState("");
   const [loading, setLoading] = useState(false);
+  const navigate = useNavigate();
+  const location = useLocation();
 
-  useEffect(() => {
-    if (authService.isAuthenticated() && authService.isAdmin()) {
-      window.location.href = "/";
-    }
-  }, []);
+  // Tujuan sebelum diminta login (di-set oleh ProtectedRoute), default ke "/".
+  const redirectTo =
+    location.state?.from?.pathname ??
+    new URLSearchParams(location.search).get("next") ??
+    "/";
+
+  if (authService.isAuthenticated() && authService.isAdmin()) {
+    return <Navigate to={redirectTo} replace />;
+  }
 
   const handleChange = (e) => {
     const { name, value } = e.target;
@@ -39,7 +46,7 @@ const Login = () => {
 
       await authService.login(formData.email, formData.password);
 
-      window.location.href = "/";
+      navigate(redirectTo, { replace: true });
     } catch (err) {
       setError(err.message || "Login failed. Please try again.");
     } finally {
@@ -91,6 +98,7 @@ const Login = () => {
                   value={formData.email}
                   onChange={handleChange}
                   placeholder="Enter your email"
+                  autoComplete="username"
                   disabled={loading}
                   className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-slate-100 disabled:cursor-not-allowed transition-colors"
                   required
@@ -111,6 +119,7 @@ const Login = () => {
                   value={formData.password}
                   onChange={handleChange}
                   placeholder="Enter your password"
+                  autoComplete="current-password"
                   disabled={loading}
                   className="w-full px-4 py-3 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500 focus:border-transparent disabled:bg-slate-100 disabled:cursor-not-allowed transition-colors"
                   required
@@ -139,7 +148,7 @@ const Login = () => {
 
         {/* Footer */}
         <p className="text-center text-slate-500 text-sm mt-6">
-          © 2026 Total Quality Indonesia. All rights reserved.
+          © {new Date().getFullYear()} Total Quality Indonesia. All rights reserved.
         </p>
       </div>
     </div>

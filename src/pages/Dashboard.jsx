@@ -1,97 +1,118 @@
-// src\pages\Dashboard.jsx
+// src/pages/Dashboard.jsx
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useCallback } from "react";
+import { Link } from "react-router-dom";
 import {
   Users,
   Briefcase,
   ClipboardList,
   Calendar,
-  TrendingUp,
+  Newspaper,
+  MessageSquare,
+  HeadphonesIcon,
+  BarChart,
+  AlertCircle,
+  RefreshCw,
 } from "lucide-react";
-import api from "../services/api";
+import statsService from "../services/statsService";
+
+const CARDS = [
+  {
+    key: "users",
+    label: "Total Users",
+    icon: Users,
+    color: "bg-blue-500",
+    to: null,
+  },
+  {
+    key: "careers",
+    label: "Lowongan",
+    icon: Briefcase,
+    color: "bg-green-500",
+    to: "/careers",
+  },
+  {
+    key: "applications",
+    label: "Lamaran Masuk",
+    icon: ClipboardList,
+    color: "bg-purple-500",
+    to: "/applications",
+    subKey: "pendingApplications",
+    subLabel: "belum ditinjau",
+  },
+  {
+    key: "events",
+    label: "Events",
+    icon: Calendar,
+    color: "bg-orange-500",
+    to: "/events",
+    subKey: "upcomingEvents",
+    subLabel: "akan datang",
+  },
+  {
+    key: "articles",
+    label: "Articles",
+    icon: Newspaper,
+    color: "bg-sky-500",
+    to: "/articles",
+  },
+  {
+    key: "services",
+    label: "Services",
+    icon: Briefcase,
+    color: "bg-teal-500",
+    to: "/services",
+  },
+  {
+    key: "consultations",
+    label: "Permintaan Konsultasi",
+    icon: HeadphonesIcon,
+    color: "bg-rose-500",
+    to: "/consultations",
+  },
+  {
+    key: "forums",
+    label: "Forum Quotes",
+    icon: MessageSquare,
+    color: "bg-indigo-500",
+    to: "/forum",
+  },
+  {
+    key: "assessments",
+    label: "Hasil Assessment",
+    icon: BarChart,
+    color: "bg-amber-500",
+    to: "/assessments",
+  },
+];
 
 const Dashboard = () => {
-  const [stats, setStats] = useState({
-    users: 0,
-    careers: 0,
-    applications: 0,
-    events: 0,
-  });
+  const [stats, setStats] = useState(null);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
 
-  useEffect(() => {
-    fetchDashboardStats();
-  }, []);
-
-  const fetchDashboardStats = async () => {
+  const fetchStats = useCallback(async () => {
     try {
       setLoading(true);
-      // Fetch all stats in parallel
-      const [usersRes, careersRes, applicationsRes, eventsRes] =
-        await Promise.all([
-          api.get("/users/count").catch(() => ({ data: { count: 0 } })),
-          api.get("/careers/count").catch(() => ({ data: { count: 0 } })),
-          api.get("/applications/count").catch(() => ({ data: { count: 0 } })),
-          api.get("/events/count").catch(() => ({ data: { count: 0 } })),
-        ]);
-
-      setStats({
-        users: usersRes.data.count || 0,
-        careers: careersRes.data.count || 0,
-        applications: applicationsRes.data.count || 0,
-        events: eventsRes.data.count || 0,
-      });
       setError(null);
+      setStats(await statsService.getDashboard());
     } catch (err) {
-      console.error("Error fetching dashboard stats:", err);
-      setError("Failed to load dashboard statistics");
+      setError(err.message);
     } finally {
       setLoading(false);
     }
-  };
+  }, []);
 
-  const statCards = [
-    {
-      label: "Total Users",
-      value: stats.users,
-      icon: Users,
-      color: "bg-blue-500",
-      bgColor: "bg-blue-50",
-      textColor: "text-blue-700",
-    },
-    {
-      label: "Active Careers",
-      value: stats.careers,
-      icon: Briefcase,
-      color: "bg-green-500",
-      bgColor: "bg-green-50",
-      textColor: "text-green-700",
-    },
-    {
-      label: "Applications",
-      value: stats.applications,
-      icon: ClipboardList,
-      color: "bg-purple-500",
-      bgColor: "bg-purple-50",
-      textColor: "text-purple-700",
-    },
-    {
-      label: "Upcoming Events",
-      value: stats.events,
-      icon: Calendar,
-      color: "bg-orange-500",
-      bgColor: "bg-orange-50",
-      textColor: "text-orange-700",
-    },
-  ];
+  useEffect(() => {
+    fetchStats();
+  }, [fetchStats]);
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-slate-600">Loading dashboard...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto" />
+          <p className="mt-4 text-slate-600">Memuat dashboard...</p>
         </div>
       </div>
     );
@@ -99,97 +120,64 @@ const Dashboard = () => {
 
   return (
     <div>
-      <div className="mb-6">
-        <h2 className="text-2xl font-bold text-slate-800">Dashboard</h2>
-        <p className="text-slate-600 mt-1">
-          Welcome back! Here's your overview.
-        </p>
+      <div className="mb-6 flex items-start justify-between gap-4">
+        <div>
+          <h2 className="text-2xl font-bold text-slate-800">Dashboard</h2>
+          <p className="text-slate-600 mt-1">
+            Ringkasan isi website Total Quality.
+          </p>
+        </div>
+        <button
+          onClick={fetchStats}
+          className="inline-flex items-center gap-2 px-3 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
+        >
+          <RefreshCw size={16} />
+          <span className="hidden sm:inline">Refresh</span>
+        </button>
       </div>
 
       {error && (
-        <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-          {error}
+        <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-start gap-3">
+          <AlertCircle size={20} className="flex-shrink-0 mt-0.5" />
+          <div>
+            <p className="font-medium">Gagal memuat statistik</p>
+            <p className="text-sm mt-0.5">{error}</p>
+          </div>
         </div>
       )}
 
-      {/* Stats Cards */}
-      <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-4 gap-6 mb-8">
-        {statCards.map((stat, index) => {
-          const Icon = stat.icon;
-          return (
-            <div
-              key={index}
-              className="bg-white rounded-lg shadow-sm p-6 border border-slate-200 hover:shadow-md transition-shadow"
-            >
-              <div className="flex items-center justify-between mb-4">
+      {stats && (
+        <div className="grid grid-cols-1 sm:grid-cols-2 lg:grid-cols-3 xl:grid-cols-4 gap-6">
+          {CARDS.map(({ key, label, icon: Icon, color, to, subKey, subLabel }) => {
+            const card = (
+              <div className="bg-white rounded-lg shadow-sm p-6 border border-slate-200 hover:shadow-md transition-shadow h-full">
                 <div
-                  className={`w-12 h-12 ${stat.color} rounded-lg flex items-center justify-center`}
+                  className={`w-12 h-12 ${color} rounded-lg flex items-center justify-center mb-4`}
                 >
                   <Icon className="text-white" size={24} />
                 </div>
+                <p className="text-slate-600 text-sm mb-1">{label}</p>
+                <p className="text-3xl font-bold text-slate-800">
+                  {(stats[key] ?? 0).toLocaleString("id-ID")}
+                </p>
+                {subKey !== undefined && (
+                  <p className="text-xs text-slate-500 mt-1">
+                    {(stats[subKey] ?? 0).toLocaleString("id-ID")} {subLabel}
+                  </p>
+                )}
               </div>
-              <p className="text-slate-600 text-sm mb-1">{stat.label}</p>
-              <p className="text-3xl font-bold text-slate-800">
-                {stat.value.toLocaleString()}
-              </p>
-            </div>
-          );
-        })}
-      </div>
+            );
 
-      {/* Welcome Card */}
-      {/* <div className="grid grid-cols-1 lg:grid-cols-2 gap-6">
-        <div className="bg-white rounded-lg shadow-sm p-6 border border-slate-200">
-          <h3 className="text-lg font-semibold text-slate-800 mb-4">
-            Welcome to Admin Panel
-          </h3>
-          <p className="text-slate-600 mb-4">
-            Gunakan menu di sebelah kiri untuk mengelola konten website company
-            profile Anda. Setiap modul menyediakan fitur CRUD lengkap untuk
-            memudahkan pengelolaan data.
-          </p>
-          <div className="space-y-2 text-sm text-slate-600">
-            <p>
-              • <strong>Users:</strong> Kelola data pengguna dan profil mereka
-            </p>
-            <p>
-              • <strong>Services:</strong> Tambah dan edit layanan perusahaan
-            </p>
-            <p>
-              • <strong>Careers:</strong> Post lowongan pekerjaan baru
-            </p>
-            <p>
-              • <strong>Applications:</strong> Review aplikasi kandidat
-            </p>
-          </div>
+            return to ? (
+              <Link key={key} to={to} className="block">
+                {card}
+              </Link>
+            ) : (
+              <div key={key}>{card}</div>
+            );
+          })}
         </div>
-
-        <div className="bg-white rounded-lg shadow-sm p-6 border border-slate-200">
-          <h3 className="text-lg font-semibold text-slate-800 mb-4">
-            Quick Actions
-          </h3>
-          <div className="space-y-3">
-            <button className="w-full px-4 py-3 bg-blue-50 text-blue-700 rounded-lg hover:bg-blue-100 transition-colors text-left">
-              <span className="font-medium">Add New Career</span>
-              <p className="text-sm text-blue-600 mt-1">
-                Post a new job opening
-              </p>
-            </button>
-            <button className="w-full px-4 py-3 bg-green-50 text-green-700 rounded-lg hover:bg-green-100 transition-colors text-left">
-              <span className="font-medium">Create Event</span>
-              <p className="text-sm text-green-600 mt-1">
-                Schedule a new event
-              </p>
-            </button>
-            <button className="w-full px-4 py-3 bg-purple-50 text-purple-700 rounded-lg hover:bg-purple-100 transition-colors text-left">
-              <span className="font-medium">Publish News</span>
-              <p className="text-sm text-purple-600 mt-1">
-                Share company updates
-              </p>
-            </button>
-          </div>
-        </div>
-      </div> */}
+      )}
     </div>
   );
 };

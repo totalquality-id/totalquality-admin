@@ -1,14 +1,23 @@
 // src/services/assessmentService.js
-import api from "./api";
+import api, { toDisplayError } from "./api";
 
+/**
+ * Assessment di sistem ini adalah HASIL pengisian dari pengunjung publik,
+ * bukan template yang dibuat admin. Backend hanya menyediakan list, detail,
+ * statistik, dan hapus.
+ *
+ * Karena itu panel tidak punya create/update/toggleActive. Sebelumnya
+ * AssessmentList memanggil assessmentService.delete(), .toggleActive() dan
+ * .update() padahal tidak satu pun pernah didefinisikan di file ini, sehingga
+ * tombolnya melempar TypeError begitu diklik.
+ */
 const assessmentService = {
   getAll: async () => {
     try {
       const response = await api.get("/assessments");
-      return response.data; //
+      return response.data;
     } catch (error) {
-      console.error("Error fetching assessments:", error);
-      throw error;
+      throw toDisplayError(error, "Gagal memuat hasil assessment");
     }
   },
 
@@ -17,29 +26,16 @@ const assessmentService = {
       const response = await api.get(`/assessments/${id}`);
       return response.data;
     } catch (error) {
-      console.error(`Error fetching assessment ${id}:`, error);
-      throw error;
+      throw toDisplayError(error, "Gagal memuat detail assessment");
     }
   },
 
-  create: async (data) => {
+  delete: async (id) => {
     try {
-      const payload = {
-        name: data.name,
-        job: data.job,
-        city: data.city,
-        age: data.age,
-        gender: data.gender,
-        type: data.type, // 'personality' or 'company'
-        answers: data.answers, // object
-        results: data.results  // object
-      };
-      
-      const response = await api.post("/assessments", payload);
+      const response = await api.delete(`/assessments/${id}`);
       return response.data;
     } catch (error) {
-      console.error("Error creating assessment:", error);
-      throw error;
+      throw toDisplayError(error, "Gagal menghapus hasil assessment");
     }
   },
 
@@ -48,8 +44,7 @@ const assessmentService = {
       const response = await api.get("/assessments/stats");
       return response.data;
     } catch (error) {
-      console.error("Error fetching assessment statistics:", error);
-      throw error;
+      throw toDisplayError(error, "Gagal memuat statistik assessment");
     }
   },
 };
