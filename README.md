@@ -58,14 +58,41 @@ untuk development.
 
 ## Environment
 
-| Variabel           | Wajib | Keterangan                                          |
-| ------------------ | ----- | --------------------------------------------------- |
-| `VITE_API_URL`     | Ya    | Base URL API, lengkap dengan `/api`                 |
-| `VITE_APP_NAME`    | Tidak | Nama aplikasi                                        |
-| `VITE_APP_VERSION` | Tidak | Versi aplikasi                                       |
+| Variabel           | Wajib | Keterangan                                    |
+| ------------------ | ----- | --------------------------------------------- |
+| `VITE_API_URL`     | Ya    | Satu atau beberapa base URL API, dipisah koma |
+| `VITE_APP_NAME`    | Tidak | Nama aplikasi                                  |
+| `VITE_APP_VERSION` | Tidak | Versi aplikasi                                 |
 
 `VITE_API_URL` yang kosong akan menggagalkan build secara sengaja, supaya
 panel tidak diam-diam menembak origin-nya sendiri dan menghasilkan 404.
+
+### Beberapa backend (failover)
+
+`VITE_API_URL` boleh diisi beberapa URL dipisah koma:
+
+```
+VITE_API_URL="https://totalquality-zeta.vercel.app/api,https://totalquality.co.id/api"
+```
+
+URL pertama dipakai sebagai utama. Cadangan hanya dicoba ketika backend utama
+benar-benar **tidak terjangkau** — jaringan putus, CORS ditolak, atau
+502/503/504. Respons 4xx **tidak** memicu failover, karena 401 atau 404 adalah
+jawaban sah dari server; mencoba ulang hanya akan menutupi masalah sebenarnya.
+
+Base URL yang berhasil disimpan di `sessionStorage` agar permintaan berikutnya
+langsung menuju ke sana tanpa mengulang percobaan.
+
+Dua syarat yang harus dipenuhi:
+
+1. **Semua URL menunjuk ke database yang sama.** Backend dengan data berbeda
+   akan membuat panel menampilkan isi yang berganti-ganti tanpa sebab jelas.
+2. **Semua URL menjalankan versi kode yang sama.** Backend lama yang belum
+   punya endpoint baru akan menjawab 404 — dan karena 404 bukan tanda server
+   mati, failover tidak akan menolong. Urutkan backend paling baru di depan.
+
+Selain itu, setiap backend harus mencantumkan origin panel ini pada
+`ADMIN_ORIGINS` miliknya masing-masing.
 
 ---
 
@@ -74,8 +101,14 @@ panel tidak diam-diam menembak origin-nya sendiri dan menghasilkan 404.
 1. Import repository ini di Vercel. Framework preset: **Vite**
    (`vercel.json` sudah mengunci build command, output directory, SPA rewrite,
    dan security header).
-2. Isi Environment Variable `VITE_API_URL` = `https://totalquality.co.id/api`
-   untuk Production, Preview, dan Development.
+2. Isi Environment Variable `VITE_API_URL` untuk Production, Preview, dan
+   Development. Boleh satu URL, atau beberapa dipisah koma untuk failover:
+
+   ```
+   https://totalquality-zeta.vercel.app/api,https://totalquality.co.id/api
+   ```
+
+   Letakkan backend yang menjalankan kode paling baru di urutan pertama.
 3. Setelah deployment pertama, catat URL produksinya, lalu **tambahkan URL itu
    ke `ADMIN_ORIGINS` di environment website utama** dan restart website utama:
 
@@ -100,6 +133,7 @@ hasil pencarian.
 | Services      | `/services`      | CRUD layanan                                   |
 | Events        | `/events`        | CRUD kegiatan                                  |
 | Articles      | `/articles`      | CRUD artikel (rich text + gambar)              |
+| Komentar      | `/comments`      | Moderasi komentar pengunjung (Article & Event) |
 | Careers       | `/careers`       | CRUD lowongan, buka/tutup status               |
 | Applications  | `/applications`  | Review lamaran, ubah status, hapus             |
 | Forum         | `/forum`         | CRUD quotes                                    |

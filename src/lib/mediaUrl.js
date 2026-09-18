@@ -12,10 +12,9 @@
 // panel (localhost:5173 atau domain Vercel) dan gagal. Path relatif harus
 // diarahkan ke origin website utama.
 
-const API_URL = import.meta.env.VITE_API_URL ?? "";
-
-/** Origin website utama, diturunkan dari VITE_API_URL dengan membuang /api. */
-const SITE_ORIGIN = API_URL.replace(/\/api\/?$/, "").replace(/\/$/, "");
+// VITE_API_URL boleh berisi beberapa URL dipisah koma, jadi origin-nya
+// dihitung sekali di services/api.js dan dipakai ulang di sini.
+import { SITE_ORIGIN } from "../services/api";
 
 /**
  * Kembalikan URL gambar yang bisa dimuat dari origin panel admin.

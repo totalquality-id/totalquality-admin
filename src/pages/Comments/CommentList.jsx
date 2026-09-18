@@ -21,6 +21,7 @@ import {
   Mail,
 } from "lucide-react";
 import commentService from "../../services/commentService";
+import { SITE_ORIGIN } from "../../services/api";
 import Button from "../../components/Common/Button";
 import notify from "../../lib/notify";
 
@@ -44,10 +45,6 @@ const STATUS_LABEL = {
 };
 
 const TARGET_LABEL = { article: "Article", event: "Event" };
-
-const SITE_ORIGIN = (import.meta.env.VITE_API_URL ?? "")
-  .replace(/\/api\/?$/, "")
-  .replace(/\/$/, "");
 
 const formatDate = (value) =>
   new Date(value).toLocaleDateString("id-ID", {
