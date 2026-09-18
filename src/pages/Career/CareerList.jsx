@@ -2,6 +2,7 @@
 
 import React, { useState, useEffect } from "react";
 import {
+  Calendar,
   Plus,
   Edit,
   Trash2,
@@ -127,7 +128,7 @@ const CareerList = () => {
   };
 
   const formatDate = (dateString) => {
-    if (!dateString) return "No deadline";
+    if (!dateString) return "—";
     return new Date(dateString).toLocaleDateString("id-ID", {
       year: "numeric",
       month: "long",
@@ -135,10 +136,6 @@ const CareerList = () => {
     });
   };
 
-  const isDeadlinePassed = (deadline) => {
-    if (!deadline) return false;
-    return new Date(deadline) < new Date();
-  };
 
   const getTypeLabel = (type) => {
     const types = {
@@ -156,13 +153,16 @@ const CareerList = () => {
     .filter((career) => {
       const matchesSearch =
         career.title.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        career.department?.toLowerCase().includes(searchTerm.toLowerCase()) ||
+        career.jobType?.toLowerCase().includes(searchTerm.toLowerCase()) ||
         career.location?.toLowerCase().includes(searchTerm.toLowerCase());
 
       const matchesStatus =
         filterStatus === "all" || career.status === filterStatus;
 
-      const matchesType = filterType === "all" || career.type === filterType;
+      const matchesType =
+        filterType === "all" ||
+        career.jobType?.toLowerCase().replace(/\s+/g, "-") ===
+          filterType.toLowerCase();
 
       return matchesSearch && matchesStatus && matchesType;
     })
@@ -309,7 +309,6 @@ const CareerList = () => {
         // Grid View
         <div className="grid grid-cols-1 md:grid-cols-2 lg:grid-cols-3 gap-6">
           {filteredCareers.map((career) => {
-            const deadlinePassed = isDeadlinePassed(career.deadline);
             return (
               <div
                 key={career.id}
@@ -320,18 +319,18 @@ const CareerList = () => {
                     className={`
                       inline-block px-3 py-1 rounded-full text-xs font-medium
                       ${
-                        career.status === "open" && !deadlinePassed
+                        career.status === "open"
                           ? "bg-green-100 text-green-700"
                           : "bg-red-100 text-red-700"
                       }
                     `}
                   >
-                    {career.status === "open" && !deadlinePassed
+                    {career.status === "open"
                       ? "Open"
                       : "Closed"}
                   </span>
                   <span className="inline-block px-3 py-1 rounded-full text-xs font-medium bg-blue-100 text-blue-700">
-                    {getTypeLabel(career.type)}
+                    {career.jobType || "—"}
                   </span>
                 </div>
 
@@ -342,7 +341,7 @@ const CareerList = () => {
                 <div className="space-y-2 text-sm text-slate-600 mb-4">
                   <div className="flex items-center gap-2">
                     <Briefcase size={16} className="text-blue-600" />
-                    <span>{career.department}</span>
+                    <span>{career.jobType}</span>
                   </div>
                   <div className="flex items-center gap-2">
                     <MapPin size={16} className="text-blue-600" />
@@ -354,11 +353,15 @@ const CareerList = () => {
                       <span>{career.salary}</span>
                     </div>
                   )}
+                  {career.experience && (
+                    <div className="flex items-center gap-2">
+                      <Clock size={16} className="text-blue-600" />
+                      <span>{career.experience}</span>
+                    </div>
+                  )}
                   <div className="flex items-center gap-2">
-                    <Clock size={16} className="text-blue-600" />
-                    <span className={deadlinePassed ? "text-red-600" : ""}>
-                      {formatDate(career.deadline)}
-                    </span>
+                    <Calendar size={16} className="text-blue-600" />
+                    <span>Diposting {formatDate(career.createdAt)}</span>
                   </div>
                 </div>
 
@@ -424,8 +427,7 @@ const CareerList = () => {
             </thead>
             <tbody className="divide-y divide-slate-200">
               {filteredCareers.map((career) => {
-                const deadlinePassed = isDeadlinePassed(career.deadline);
-                return (
+                    return (
                   <tr key={career.id} className="hover:bg-slate-50">
                     <td className="px-6 py-4">
                       <div>
@@ -433,35 +435,32 @@ const CareerList = () => {
                           {career.title}
                         </div>
                         <div className="text-sm text-slate-500">
-                          {career.department}
+                          {career.jobType}
                         </div>
                       </div>
                     </td>
                     <td className="px-6 py-4 text-sm text-slate-600 hidden lg:table-cell">
                       <span className="inline-block px-2 py-1 rounded text-xs bg-blue-100 text-blue-700">
-                        {getTypeLabel(career.type)}
+                        {career.jobType || "—"}
                       </span>
                     </td>
                     <td className="px-6 py-4 text-sm text-slate-600 hidden md:table-cell">
                       {career.location}
                     </td>
                     <td className="px-6 py-4 text-sm text-slate-600 hidden md:table-cell">
-                      <span className={deadlinePassed ? "text-red-600" : ""}>
-                        {formatDate(career.deadline)}
-                      </span>
                     </td>
                     <td className="px-6 py-4">
                       <span
                         className={`
                           inline-block px-3 py-1 rounded-full text-xs font-medium
                           ${
-                            career.status === "open" && !deadlinePassed
+                            career.status === "open"
                               ? "bg-green-100 text-green-700"
                               : "bg-red-100 text-red-700"
                           }
                         `}
                       >
-                        {career.status === "open" && !deadlinePassed
+                        {career.status === "open"
                           ? "Open"
                           : "Closed"}
                       </span>

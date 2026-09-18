@@ -2,9 +2,14 @@
 import api, { toDisplayError } from "./api";
 
 const careerService = {
+  // includeClosed=true supaya panel tetap bisa melihat dan membuka kembali
+  // lowongan yang sudah ditutup. Endpoint publik tanpa parameter ini hanya
+  // mengembalikan lowongan berstatus "open".
   getAll: async () => {
     try {
-      const response = await api.get("/careers");
+      const response = await api.get("/careers", {
+        params: { includeClosed: "true" },
+      });
       return response.data;
     } catch (error) {
       throw toDisplayError(error, "Gagal memuat lowongan");
