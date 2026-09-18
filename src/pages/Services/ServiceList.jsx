@@ -7,6 +7,7 @@ import Modal from "../../components/Common/Modal";
 import Button from "../../components/Common/Button";
 import ServiceForm from "./ServiceForm";
 import notify from "../../lib/notify";
+import resolveMediaUrl from "../../lib/mediaUrl";
 
 const ServiceList = () => {
   const [services, setServices] = useState([]);
@@ -217,7 +218,7 @@ const ServiceList = () => {
             >
               {service.image && (
                 <img
-                  src={service.image}
+                  src={resolveMediaUrl(service.image)}
                   alt={service.title}
                   className="w-full h-48 object-cover rounded-lg mb-4"
                   onError={(e) => {
@@ -289,7 +290,7 @@ const ServiceList = () => {
                     <div className="flex items-center gap-3">
                       {service.image && (
                         <img
-                          src={service.image}
+                          src={resolveMediaUrl(service.image)}
                           alt={service.title}
                           className="w-12 h-12 object-cover rounded"
                           onError={(e) => {

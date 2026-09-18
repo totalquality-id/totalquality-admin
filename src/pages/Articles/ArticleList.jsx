@@ -15,6 +15,8 @@ import Modal from "../../components/Common/Modal";
 import Button from "../../components/Common/Button";
 import ArticleForm from "./ArticleForm";
 import notify from "../../lib/notify";
+import { stripHtml, truncateContent } from "../../lib/htmlText";
+import resolveMediaUrl from "../../lib/mediaUrl";
 
 const ArticleList = () => {
   const [articles, setArticles] = useState([]);
@@ -114,7 +116,7 @@ const ArticleList = () => {
       const q = searchTerm.toLowerCase();
       return (
         item.title.toLowerCase().includes(q) ||
-        item.content.toLowerCase().includes(q) ||
+        stripHtml(item.content).toLowerCase().includes(q) ||
         item.author?.toLowerCase().includes(q)
       );
     })
@@ -215,7 +217,7 @@ const ArticleList = () => {
             >
               {item.image && (
                 <img
-                  src={item.image}
+                  src={resolveMediaUrl(item.image)}
                   alt={item.title}
                   className="w-full h-48 object-cover"
                   onError={(e) => {
@@ -230,7 +232,7 @@ const ArticleList = () => {
                 </h3>
 
                 <p className="text-slate-600 text-sm mb-3 line-clamp-3">
-                  {item.content}
+                  {truncateContent(item.content, 200)}
                 </p>
 
                 <div className="text-xs text-slate-500 mb-4">
@@ -289,7 +291,7 @@ const ArticleList = () => {
                     <div className="flex items-center gap-3">
                       {item.image && (
                         <img
-                          src={item.image}
+                          src={resolveMediaUrl(item.image)}
                           alt={item.title}
                           className="w-12 h-12 object-cover rounded"
                           onError={(e) => {
@@ -302,7 +304,7 @@ const ArticleList = () => {
                           {item.title}
                         </div>
                         <div className="text-sm text-slate-500 line-clamp-1">
-                          {item.content}
+                          {truncateContent(item.content, 120)}
                         </div>
                       </div>
                     </div>

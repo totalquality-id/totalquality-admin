@@ -6,6 +6,7 @@ import heroService from "../../services/heroService";
 import api, { toDisplayError } from "../../services/api";
 import Button from "../../components/Common/Button";
 import notify from "../../lib/notify";
+import resolveMediaUrl from "../../lib/mediaUrl";
 
 const EMPTY_CONTENT = {
   heading: "",
@@ -361,7 +362,7 @@ const HeroManager = () => {
                     Versi lama menempelkan "http://localhost:3000" di depannya,
                     sehingga semua gambar di panel ini gagal dimuat. */}
                 <img
-                  src={hero.image}
+                  src={resolveMediaUrl(hero.image)}
                   alt={hero.title || `Hero slide ${index + 1}`}
                   className="w-full h-36 object-cover bg-slate-200"
                   loading="lazy"

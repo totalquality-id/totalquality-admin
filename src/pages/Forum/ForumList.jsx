@@ -1,18 +1,27 @@
 // src/pages/Forum/ForumList.jsx
+//
+// Model Forum di backend hanya berisi { quote, author, likes, shares,
+// createdAt } -- isinya adalah kutipan yang tampil di halaman /forum website.
+//
+// Versi sebelumnya dibangun untuk model diskusi yang sama sekali berbeda:
+// membaca post.title, post.content, post.author.name, post.category,
+// post.tags dan post.pinned. Tidak satu pun field itu ada, sehingga kotak
+// pencarian tidak pernah cocok, badge kategori selalu menampilkan "undefined",
+// filter kategori tidak menyaring apa pun, dan sort "pinned" tidak berefek.
 
-import React, { useState, useEffect } from "react";
+import React, { useState, useEffect, useMemo } from "react";
 import {
   Plus,
   Edit,
   Trash2,
   Search,
   MessageSquare,
-  Pin,
-  Lock,
-  Unlock,
-  Tag,
+  Heart,
+  Share2,
   User,
   Calendar,
+  RefreshCw,
+  AlertCircle,
 } from "lucide-react";
 import forumService from "../../services/forumService";
 import Modal from "../../components/Common/Modal";
@@ -20,175 +29,142 @@ import Button from "../../components/Common/Button";
 import ForumForm from "./ForumForm";
 import notify from "../../lib/notify";
 
+const SORT_OPTIONS = [
+  { value: "newest", label: "Terbaru" },
+  { value: "oldest", label: "Terlama" },
+  { value: "likes", label: "Paling disukai" },
+  { value: "shares", label: "Paling dibagikan" },
+];
+
+const formatDate = (value) =>
+  new Date(value).toLocaleDateString("id-ID", {
+    year: "numeric",
+    month: "long",
+    day: "numeric",
+  });
+
 const ForumList = () => {
-  const [posts, setPosts] = useState([]);
+  const [quotes, setQuotes] = useState([]);
   const [loading, setLoading] = useState(true);
   const [error, setError] = useState(null);
   const [searchTerm, setSearchTerm] = useState("");
-  const [filterCategory, setFilterCategory] = useState("all");
+  const [sortBy, setSortBy] = useState("newest");
 
-  // Modal states
   const [isModalOpen, setIsModalOpen] = useState(false);
-  const [selectedPost, setSelectedPost] = useState(null);
+  const [selectedQuote, setSelectedQuote] = useState(null);
   const [isSubmitting, setIsSubmitting] = useState(false);
+  const [deletingId, setDeletingId] = useState(null);
 
-  const fetchPosts = async () => {
+  const fetchQuotes = async () => {
     try {
       setLoading(true);
-      const data = await forumService.getAll();
-      setPosts(data);
       setError(null);
+      setQuotes(await forumService.getAll());
     } catch (err) {
-      setError("Failed to load forum posts");
-      console.error(err);
+      setError(err.message || "Gagal memuat quotes");
     } finally {
       setLoading(false);
     }
   };
 
-
   useEffect(() => {
-    fetchPosts();
+    fetchQuotes();
   }, []);
 
   const handleCreate = () => {
-    setSelectedPost(null);
+    setSelectedQuote(null);
     setIsModalOpen(true);
   };
 
-  const handleEdit = (post) => {
-    setSelectedPost(post);
+  const handleEdit = (quote) => {
+    setSelectedQuote(quote);
     setIsModalOpen(true);
+  };
+
+  const handleCloseModal = () => {
+    if (isSubmitting) return;
+    setIsModalOpen(false);
+    setSelectedQuote(null);
   };
 
   const handleDelete = async (id) => {
-    if (!window.confirm("Are you sure you want to delete this post?")) {
+    if (!window.confirm("Hapus quote ini? Tindakan ini tidak bisa dibatalkan."))
       return;
-    }
 
+    setDeletingId(id);
     try {
       await forumService.delete(id);
-      setPosts(posts.filter((p) => p.id !== id));
-      notify.success("Post deleted successfully");
+      setQuotes((prev) => prev.filter((q) => q.id !== id));
+      notify.success("Quote berhasil dihapus");
     } catch (err) {
-      notify.error("Failed to delete post");
-      console.error(err);
-    }
-  };
-
-  const handleTogglePin = async (id, currentStatus) => {
-    try {
-      const updated = await forumService.togglePin(id, !currentStatus);
-      setPosts(posts.map((p) => (p.id === id ? updated : p)));
-      notify.success(`Post ${!currentStatus ? "pinned" : "unpinned"} successfully`);
-    } catch (err) {
-      notify.error("Failed to update pin status");
-      console.error(err);
-    }
-  };
-
-  const handleToggleLock = async (id, currentStatus) => {
-    try {
-      const updated = await forumService.toggleLock(id, !currentStatus);
-      setPosts(posts.map((p) => (p.id === id ? updated : p)));
-      notify.success(`Post ${!currentStatus ? "locked" : "unlocked"} successfully`);
-    } catch (err) {
-      notify.error("Failed to update lock status");
-      console.error(err);
+      notify.error(err.message || "Gagal menghapus quote");
+    } finally {
+      setDeletingId(null);
     }
   };
 
   const handleSubmit = async (formData) => {
+    setIsSubmitting(true);
     try {
-      setIsSubmitting(true);
-
-      if (selectedPost) {
-        const updated = await forumService.update(selectedPost.id, formData);
-        setPosts(posts.map((p) => (p.id === selectedPost.id ? updated : p)));
-        notify.success("Post updated successfully");
+      if (selectedQuote) {
+        const updated = await forumService.update(selectedQuote.id, formData);
+        setQuotes((prev) =>
+          prev.map((q) => (q.id === selectedQuote.id ? { ...q, ...updated } : q))
+        );
+        notify.success("Quote berhasil diperbarui");
       } else {
         const created = await forumService.create(formData);
-        setPosts([created, ...posts]);
-        notify.success("Post created successfully");
+        setQuotes((prev) => [created, ...prev]);
+        notify.success("Quote berhasil dibuat");
       }
-
       setIsModalOpen(false);
+      setSelectedQuote(null);
     } catch (err) {
-      notify.error(err.response?.data?.message || "Failed to save post");
-      console.error(err);
+      notify.error(err.message || "Gagal menyimpan quote");
     } finally {
       setIsSubmitting(false);
     }
   };
 
-  const handleCloseModal = () => {
-    if (!isSubmitting) {
-      setIsModalOpen(false);
-      setSelectedPost(null);
-    }
-  };
+  const totals = useMemo(
+    () =>
+      quotes.reduce(
+        (acc, q) => ({
+          likes: acc.likes + (q.likes ?? 0),
+          shares: acc.shares + (q.shares ?? 0),
+        }),
+        { likes: 0, shares: 0 }
+      ),
+    [quotes]
+  );
 
-  const formatDate = (dateString) => {
-    return new Date(dateString).toLocaleDateString("id-ID", {
-      year: "numeric",
-      month: "short",
-      day: "numeric",
-      hour: "2-digit",
-      minute: "2-digit",
+  const visibleQuotes = useMemo(() => {
+    const q = searchTerm.trim().toLowerCase();
+
+    const filtered = quotes.filter((item) => {
+      if (!q) return true;
+      return (
+        item.quote?.toLowerCase().includes(q) ||
+        item.author?.toLowerCase().includes(q)
+      );
     });
-  };
 
-  const getCategoryLabel = (category) => {
-    const labels = {
-      general: "General",
-      announcement: "Announcement",
-      support: "Support",
-      feedback: "Feedback",
-      ideas: "Ideas",
-      qa: "Q&A",
+    const sorters = {
+      newest: (a, b) => new Date(b.createdAt) - new Date(a.createdAt),
+      oldest: (a, b) => new Date(a.createdAt) - new Date(b.createdAt),
+      likes: (a, b) => (b.likes ?? 0) - (a.likes ?? 0),
+      shares: (a, b) => (b.shares ?? 0) - (a.shares ?? 0),
     };
-    return labels[category] || category;
-  };
 
-  const getCategoryColor = (category) => {
-    const colors = {
-      general: "bg-slate-100 text-slate-700",
-      announcement: "bg-blue-100 text-blue-700",
-      support: "bg-green-100 text-green-700",
-      feedback: "bg-purple-100 text-purple-700",
-      ideas: "bg-yellow-100 text-yellow-700",
-      qa: "bg-orange-100 text-orange-700",
-    };
-    return colors[category] || "bg-slate-100 text-slate-700";
-  };
-
-  // Filter posts
-  const filteredPosts = posts
-    .filter((post) => {
-      const matchesSearch =
-        post.title?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        post.content?.toLowerCase().includes(searchTerm.toLowerCase()) ||
-        post.author?.name?.toLowerCase().includes(searchTerm.toLowerCase());
-
-      const matchesCategory =
-        filterCategory === "all" || post.category === filterCategory;
-
-      return matchesSearch && matchesCategory;
-    })
-    .sort((a, b) => {
-      // Pinned posts first
-      if (a.pinned && !b.pinned) return -1;
-      if (!a.pinned && b.pinned) return 1;
-      // Then by date
-      return new Date(b.createdAt) - new Date(a.createdAt);
-    });
+    return [...filtered].sort(sorters[sortBy] ?? sorters.newest);
+  }, [quotes, searchTerm, sortBy]);
 
   if (loading) {
     return (
       <div className="flex items-center justify-center h-64">
         <div className="text-center">
-          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto"></div>
-          <p className="mt-4 text-slate-600">Loading forum posts...</p>
+          <div className="animate-spin rounded-full h-12 w-12 border-b-2 border-blue-600 mx-auto" />
+          <p className="mt-4 text-slate-600">Memuat quotes...</p>
         </div>
       </div>
     );
@@ -196,189 +172,178 @@ const ForumList = () => {
 
   return (
     <div>
-      {/* Header */}
-      <div className="flex flex-col sm:flex-row justify-between items-start sm:items-center gap-4 mb-6">
+      <div className="mb-6 flex flex-wrap items-start justify-between gap-4">
         <div>
-          <h2 className="text-2xl font-bold text-slate-800">Forum</h2>
-          <p className="text-slate-600 mt-1">Manage forum discussions and posts</p>
+          <h2 className="text-2xl font-bold text-slate-800">Forum Quotes</h2>
+          <p className="text-slate-600 mt-1">
+            Kutipan yang tampil di halaman Forum website.
+          </p>
         </div>
-        <Button onClick={handleCreate} variant="primary" icon={Plus}>
-          Add Post
-        </Button>
+
+        <div className="flex items-center gap-2">
+          <button
+            onClick={fetchQuotes}
+            className="inline-flex items-center gap-2 px-3 py-2 text-sm text-slate-600 border border-slate-200 rounded-lg hover:bg-slate-50 transition-colors"
+          >
+            <RefreshCw size={16} />
+            <span className="hidden sm:inline">Refresh</span>
+          </button>
+          <Button variant="primary" onClick={handleCreate} icon={Plus}>
+            Tambah Quote
+          </Button>
+        </div>
       </div>
 
       {error && (
-        <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg">
-          {error}
+        <div className="mb-6 bg-red-50 border border-red-200 text-red-700 px-4 py-3 rounded-lg flex items-start gap-3">
+          <AlertCircle size={20} className="flex-shrink-0 mt-0.5" />
+          <p className="text-sm">{error}</p>
         </div>
       )}
 
-      {/* Filters & Search */}
-      <div className="mb-6 flex flex-col sm:flex-row gap-4">
+      {/* Ringkasan */}
+      <div className="grid grid-cols-1 sm:grid-cols-3 gap-4 mb-6">
+        {[
+          {
+            label: "Total Quote",
+            value: quotes.length,
+            Icon: MessageSquare,
+            color: "bg-indigo-500",
+          },
+          {
+            label: "Total Likes",
+            value: totals.likes,
+            Icon: Heart,
+            color: "bg-rose-500",
+          },
+          {
+            label: "Total Shares",
+            value: totals.shares,
+            Icon: Share2,
+            color: "bg-sky-500",
+          },
+        ].map(({ label, value, Icon, color }) => (
+          <div
+            key={label}
+            className="bg-white rounded-lg shadow-sm p-5 border border-slate-200"
+          >
+            <div
+              className={`w-10 h-10 ${color} rounded-lg flex items-center justify-center mb-3`}
+            >
+              <Icon className="text-white" size={20} />
+            </div>
+            <p className="text-slate-600 text-sm">{label}</p>
+            <p className="text-2xl font-bold text-slate-800">
+              {value.toLocaleString("id-ID")}
+            </p>
+          </div>
+        ))}
+      </div>
+
+      {/* Pencarian & urutan */}
+      <div className="bg-white rounded-lg shadow-sm border border-slate-200 p-4 mb-6 flex flex-col sm:flex-row gap-3">
         <div className="relative flex-1">
           <Search
-            className="absolute left-3 top-1/2 transform -translate-y-1/2 text-slate-400"
-            size={20}
+            size={18}
+            className="absolute left-3 top-1/2 -translate-y-1/2 text-slate-400"
           />
           <input
-            type="text"
-            placeholder="Search posts..."
+            type="search"
             value={searchTerm}
             onChange={(e) => setSearchTerm(e.target.value)}
+            placeholder="Cari isi quote atau nama penulis..."
+            aria-label="Cari quote"
             className="w-full pl-10 pr-4 py-2 border border-slate-300 rounded-lg focus:outline-none focus:ring-2 focus:ring-blue-500"
           />
         </div>
 
-        {/* Category Filter */}
         <select
-          value={filterCategory}
-          onChange={(e) => setFilterCategory(e.target.value)}
+          value={sortBy}
+          onChange={(e) => setSortBy(e.target.value)}
+          aria-label="Urutkan quote"
           className="px-4 py-2 border border-slate-300 rounded-lg text-sm focus:outline-none focus:ring-2 focus:ring-blue-500"
         >
-          <option value="all">All Categories</option>
-          <option value="general">General</option>
-          <option value="announcement">Announcements</option>
-          <option value="support">Support</option>
-          <option value="feedback">Feedback</option>
-          <option value="ideas">Ideas</option>
-          <option value="qa">Q&A</option>
+          {SORT_OPTIONS.map((option) => (
+            <option key={option.value} value={option.value}>
+              {option.label}
+            </option>
+          ))}
         </select>
       </div>
 
-      {/* Posts List */}
-      {filteredPosts.length === 0 ? (
-        <div className="text-center py-12 bg-white rounded-lg border border-slate-200">
+      {/* Daftar */}
+      {visibleQuotes.length === 0 ? (
+        <div className="text-center py-16 bg-white rounded-lg border border-slate-200">
           <MessageSquare className="w-16 h-16 text-slate-300 mx-auto mb-4" />
           <p className="text-slate-600">
-            {searchTerm
-              ? "No posts found matching your search"
-              : "No forum posts yet. Create your first post!"}
+            {quotes.length === 0
+              ? "Belum ada quote. Tambahkan quote pertama Anda."
+              : "Tidak ada quote yang cocok dengan pencarian."}
           </p>
         </div>
       ) : (
-        <div className="space-y-4">
-          {filteredPosts.map((post) => (
-            <div
-              key={post.id}
-              className="bg-white rounded-lg border border-slate-200 p-6 hover:shadow-md transition-shadow"
+        <div className="grid grid-cols-1 lg:grid-cols-2 gap-4">
+          {visibleQuotes.map((item) => (
+            <article
+              key={item.id}
+              className={`bg-white rounded-lg shadow-sm border border-slate-200 p-5 flex flex-col ${
+                deletingId === item.id ? "opacity-50 pointer-events-none" : ""
+              }`}
             >
-              <div className="flex items-start justify-between gap-4">
-                <div className="flex-1">
-                  {/* Title and Badges */}
-                  <div className="flex items-start gap-2 mb-2">
-                    {post.pinned && (
-                      <Pin size={18} className="text-blue-600 flex-shrink-0 mt-1" />
-                    )}
-                    {post.locked && (
-                      <Lock size={18} className="text-red-600 flex-shrink-0 mt-1" />
-                    )}
-                    <h3 className="text-lg font-semibold text-slate-800">
-                      {post.title}
-                    </h3>
-                  </div>
+              <blockquote className="text-slate-800 leading-relaxed border-l-4 border-blue-500 pl-4 mb-4 flex-1">
+                {item.quote}
+              </blockquote>
 
-                  {/* Category and Tags */}
-                  <div className="flex flex-wrap gap-2 mb-3">
-                    <span
-                      className={`inline-block px-3 py-1 rounded-full text-xs font-medium ${getCategoryColor(
-                        post.category
-                      )}`}
-                    >
-                      {getCategoryLabel(post.category)}
-                    </span>
-                    {post.tags && post.tags.length > 0 && (
-                      <div className="flex gap-2">
-                        {post.tags.map((tag, index) => (
-                          <span
-                            key={index}
-                            className="inline-flex items-center gap-1 px-2 py-1 rounded text-xs bg-slate-100 text-slate-600"
-                          >
-                            <Tag size={12} />
-                            {tag}
-                          </span>
-                        ))}
-                      </div>
-                    )}
-                  </div>
-
-                  {/* Content Preview */}
-                  <p className="text-slate-600 text-sm mb-3 line-clamp-2">
-                    {post.content}
-                  </p>
-
-                  {/* Meta Information */}
-                  <div className="flex flex-wrap gap-4 text-xs text-slate-500">
-                    <div className="flex items-center gap-1">
-                      <User size={14} />
-                      <span>{post.author?.name || "Admin"}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <Calendar size={14} />
-                      <span>{formatDate(post.createdAt)}</span>
-                    </div>
-                    <div className="flex items-center gap-1">
-                      <MessageSquare size={14} />
-                      <span>{post.commentsCount || 0} comments</span>
-                    </div>
-                  </div>
-                </div>
-
-                {/* Actions */}
-                <div className="flex flex-col gap-2">
-                  <Button
-                    onClick={() => handleTogglePin(post.id, post.pinned)}
-                    variant="outline"
-                    size="sm"
-                    icon={Pin}
-                    className={post.pinned ? "bg-blue-50" : ""}
-                  >
-                    <span className="hidden sm:inline">
-                      {post.pinned ? "Unpin" : "Pin"}
-                    </span>
-                  </Button>
-                  <Button
-                    onClick={() => handleToggleLock(post.id, post.locked)}
-                    variant="outline"
-                    size="sm"
-                    icon={post.locked ? Lock : Unlock}
-                    className={post.locked ? "bg-red-50" : ""}
-                  >
-                    <span className="hidden sm:inline">
-                      {post.locked ? "Unlock" : "Lock"}
-                    </span>
-                  </Button>
-                  <Button
-                    onClick={() => handleEdit(post)}
-                    variant="outline"
-                    size="sm"
-                    icon={Edit}
-                  >
-                    <span className="hidden sm:inline">Edit</span>
-                  </Button>
-                  <Button
-                    onClick={() => handleDelete(post.id)}
-                    variant="danger"
-                    size="sm"
-                    icon={Trash2}
-                  >
-                    <span className="hidden sm:inline">Delete</span>
-                  </Button>
-                </div>
+              <div className="flex flex-wrap items-center gap-x-4 gap-y-2 text-sm text-slate-500 mb-4">
+                <span className="inline-flex items-center gap-1.5">
+                  <User size={14} />
+                  {item.author || "Anonim"}
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <Calendar size={14} />
+                  {formatDate(item.createdAt)}
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <Heart size={14} className="text-rose-500" />
+                  {item.likes ?? 0}
+                </span>
+                <span className="inline-flex items-center gap-1.5">
+                  <Share2 size={14} className="text-sky-500" />
+                  {item.shares ?? 0}
+                </span>
               </div>
-            </div>
+
+              <div className="flex gap-2 pt-3 border-t border-slate-100">
+                <Button
+                  size="sm"
+                  variant="outline"
+                  onClick={() => handleEdit(item)}
+                  icon={Edit}
+                >
+                  Edit
+                </Button>
+                <Button
+                  size="sm"
+                  variant="danger"
+                  onClick={() => handleDelete(item.id)}
+                  disabled={deletingId === item.id}
+                  icon={Trash2}
+                >
+                  Hapus
+                </Button>
+              </div>
+            </article>
           ))}
         </div>
       )}
 
-      {/* Modal for Create/Edit */}
       <Modal
         isOpen={isModalOpen}
         onClose={handleCloseModal}
-        title={selectedPost ? "Edit Post" : "Add New Post"}
-        size="lg"
+        title={selectedQuote ? "Edit Quote" : "Tambah Quote"}
       >
         <ForumForm
-          post={selectedPost}
+          post={selectedQuote}
           onSubmit={handleSubmit}
           onCancel={handleCloseModal}
           isLoading={isSubmitting}

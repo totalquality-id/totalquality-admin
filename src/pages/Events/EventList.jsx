@@ -17,6 +17,7 @@ import Modal from "../../components/Common/Modal";
 import Button from "../../components/Common/Button";
 import EventForm from "./EventForm";
 import notify from "../../lib/notify";
+import resolveMediaUrl from "../../lib/mediaUrl";
 
 const EventList = () => {
   const [events, setEvents] = useState([]);
@@ -266,7 +267,7 @@ const EventList = () => {
               >
                 {event.image && (
                   <img
-                    src={event.image}
+                    src={resolveMediaUrl(event.image)}
                     alt={event.title}
                     className="w-full h-48 object-cover"
                     onError={(e) => {
@@ -373,7 +374,7 @@ const EventList = () => {
                       <div className="flex items-center gap-3">
                         {event.image && (
                           <img
-                            src={event.image}
+                            src={resolveMediaUrl(event.image)}
                             alt={event.title}
                             className="w-12 h-12 object-cover rounded"
                             onError={(e) => {
