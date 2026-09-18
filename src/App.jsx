@@ -13,6 +13,7 @@ import HeroManager from "./pages/Hero/HeroManager";
 import ServiceList from "./pages/Services/ServiceList";
 import EventList from "./pages/Events/EventList";
 import ArticleList from "./pages/Articles/ArticleList";
+import CommentList from "./pages/Comments/CommentList";
 import CareerList from "./pages/Career/CareerList";
 import ApplicationList from "./pages/Application/ApplicationList";
 import ForumList from "./pages/Forum/ForumList";
@@ -45,6 +46,7 @@ function App() {
             <Route path="services" element={<ServiceList />} />
             <Route path="events" element={<EventList />} />
             <Route path="articles" element={<ArticleList />} />
+            <Route path="comments" element={<CommentList />} />
             <Route path="careers" element={<CareerList />} />
             <Route path="applications" element={<ApplicationList />} />
             <Route path="forum" element={<ForumList />} />
